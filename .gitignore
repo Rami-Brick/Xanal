@@ -1,3 +1,6 @@
 zResources
 .agents
 .claude
+.next
+node_modules
+.env.local
