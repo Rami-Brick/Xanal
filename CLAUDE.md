@@ -133,6 +133,18 @@ return Response.json({ success: false, error: 'Token expired' }, { status: 401 }
 - Use shadcn/ui primitives — do not rebuild what shadcn provides
 - All pages must be responsive down to 375px width
 
+## Sync Strategy
+
+Three-layer sync approach (decided before Phase 2):
+
+1. **Cron (twice daily):** Vercel Cron triggers `/api/cron/sync` at 9:00 UTC (10AM Tunisia) and 18:00 UTC (7PM Tunisia). Full orders + products sync.
+2. **Smart on-open sync:** When the dashboard loads, check `sync_log` for the last completed sync timestamp. If it was more than 2 hours ago, trigger a background sync silently (no blocking the UI).
+3. **Manual sync button:** Always available in the header — triggers immediate sync and shows a toast on completion.
+
+**Last sync timestamp display:** The dashboard header must always show when data was last synced (e.g., "Mis à jour il y a 23 min" or "Mis à jour à 10:04"). Read from the latest `completed` row in `sync_log`. This tells users whether the data is fresh or stale.
+
+**Why not every 30 minutes:** 48 cron calls/day for 30-70 orders is wasteful. The two daily syncs align with COD business rhythm (morning confirmations, evening delivery updates). On-open smart refresh covers gaps during working hours.
+
 ## Git Conventions
 
 - Main branch: `main`
