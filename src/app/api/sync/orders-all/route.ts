@@ -9,27 +9,24 @@ interface ApiResponse<T = unknown> {
 
 export async function POST() {
   try {
-    const result = await syncOrders({ includeArchived: true });
+    const result = await syncOrders({ mode: "all" });
 
     return NextResponse.json<ApiResponse<{
       synced: number;
       created: number;
       updated: number;
-      includeArchived: boolean;
+      mode: string;
     }>>({
       success: true,
       data: {
         synced: result.synced,
         created: result.created,
         updated: result.updated,
-        includeArchived: result.includeArchived,
+        mode: result.mode,
       },
     });
   } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Orders + archived sync failed.";
+    const message = error instanceof Error ? error.message : "All orders sync failed.";
 
     return NextResponse.json<ApiResponse>(
       {

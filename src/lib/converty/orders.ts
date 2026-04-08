@@ -1,15 +1,11 @@
-import { getConvertyConfig } from "@/lib/converty/config";
-import {
-  makeAuthenticatedConvertyRequest,
-  makeAuthenticatedConvertyRequestToUrl,
-} from "@/lib/converty/client";
+import { makeAuthenticatedConvertyRequest } from "@/lib/converty/client";
 
 export const CONVERTY_ORDERS_PAGE_SIZE = 50;
 export const CONVERTY_ALL_ORDERS_PAGE_SIZE = 200;
 
 interface GetOrdersPageOptions {
   archived?: boolean;
-  partnerArchived?: boolean;
+  includeAllOrders?: boolean;
 }
 
 interface ConvertyOrderCustomer {
@@ -153,23 +149,17 @@ export async function getOrdersPage(
     limit: String(limit),
   });
 
-  let response: Response;
-
-  if (options?.partnerArchived) {
+  if (options?.archived) {
     params.set("archived", "true");
-    const config = getConvertyConfig();
-    response = await makeAuthenticatedConvertyRequestToUrl(
-      `${config.partnerApiBaseUrl}/order?${params.toString()}`
-    );
-  } else {
-    if (options?.archived) {
-      params.set("archived", "true");
-    }
-
-    response = await makeAuthenticatedConvertyRequest(
-      `/orders?${params.toString()}`
-    );
   }
+
+  if (options?.includeAllOrders) {
+    params.set("includeAllOrders", "true");
+  }
+
+  const response = await makeAuthenticatedConvertyRequest(
+    `/orders?${params.toString()}`
+  );
 
   if (!response.ok) {
     const details = await response.text();

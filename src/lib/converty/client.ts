@@ -29,21 +29,6 @@ export async function makeAuthenticatedConvertyRequest(
   return response;
 }
 
-export async function makeAuthenticatedConvertyRequestToUrl(
-  url: string,
-  init?: RequestInit
-): Promise<Response> {
-  let connection = await getValidToken();
-  let response = await fetchWithToken(url, connection, init);
-
-  if (response.status === 401) {
-    connection = await refreshToken(connection);
-    response = await fetchWithToken(url, connection, init);
-  }
-
-  return response;
-}
-
 async function fetchWithToken(
   url: string,
   connection: ConvertyConnection,
