@@ -11,26 +11,48 @@ export async function makeAuthenticatedConvertyRequest(
 ): Promise<Response> {
   const config = getConvertyConfig();
   let connection = await getValidToken();
-  let response = await fetchWithToken(config.apiBaseUrl, path, connection, init);
+  let response = await fetchWithToken(
+    `${config.apiBaseUrl}${path}`,
+    connection,
+    init
+  );
 
   if (response.status === 401) {
     connection = await refreshToken(connection);
-    response = await fetchWithToken(config.apiBaseUrl, path, connection, init);
+    response = await fetchWithToken(
+      `${config.apiBaseUrl}${path}`,
+      connection,
+      init
+    );
+  }
+
+  return response;
+}
+
+export async function makeAuthenticatedConvertyRequestToUrl(
+  url: string,
+  init?: RequestInit
+): Promise<Response> {
+  let connection = await getValidToken();
+  let response = await fetchWithToken(url, connection, init);
+
+  if (response.status === 401) {
+    connection = await refreshToken(connection);
+    response = await fetchWithToken(url, connection, init);
   }
 
   return response;
 }
 
 async function fetchWithToken(
-  apiBaseUrl: string,
-  path: string,
+  url: string,
   connection: ConvertyConnection,
   init?: RequestInit
 ) {
   const headers = new Headers(init?.headers);
   headers.set("Authorization", `Bearer ${connection.access_token}`);
 
-  return fetch(`${apiBaseUrl}${path}`, {
+  return fetch(url, {
     ...init,
     headers,
     cache: "no-store",

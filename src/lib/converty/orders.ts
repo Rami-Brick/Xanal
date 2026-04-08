@@ -1,6 +1,16 @@
-import { makeAuthenticatedConvertyRequest } from "@/lib/converty/client";
+import { getConvertyConfig } from "@/lib/converty/config";
+import {
+  makeAuthenticatedConvertyRequest,
+  makeAuthenticatedConvertyRequestToUrl,
+} from "@/lib/converty/client";
 
 export const CONVERTY_ORDERS_PAGE_SIZE = 50;
+export const CONVERTY_ALL_ORDERS_PAGE_SIZE = 200;
+
+interface GetOrdersPageOptions {
+  archived?: boolean;
+  partnerArchived?: boolean;
+}
 
 interface ConvertyOrderCustomer {
   name?: string | null;
@@ -135,16 +145,31 @@ function parseNullableInteger(value: number | string | null | undefined) {
 
 export async function getOrdersPage(
   page: number,
-  limit = CONVERTY_ORDERS_PAGE_SIZE
+  limit = CONVERTY_ORDERS_PAGE_SIZE,
+  options?: GetOrdersPageOptions
 ): Promise<ConvertyOrdersResponse> {
   const params = new URLSearchParams({
     page: String(page),
     limit: String(limit),
   });
 
-  const response = await makeAuthenticatedConvertyRequest(
-    `/orders?${params.toString()}`
-  );
+  let response: Response;
+
+  if (options?.partnerArchived) {
+    params.set("archived", "true");
+    const config = getConvertyConfig();
+    response = await makeAuthenticatedConvertyRequestToUrl(
+      `${config.partnerApiBaseUrl}/order?${params.toString()}`
+    );
+  } else {
+    if (options?.archived) {
+      params.set("archived", "true");
+    }
+
+    response = await makeAuthenticatedConvertyRequest(
+      `/orders?${params.toString()}`
+    );
+  }
 
   if (!response.ok) {
     const details = await response.text();
