@@ -7,10 +7,11 @@ import {
 
 export async function makeAuthenticatedConvertyRequest(
   path: string,
-  init?: RequestInit
+  init?: RequestInit,
+  storeId?: string
 ): Promise<Response> {
   const config = getConvertyConfig();
-  let connection = await getValidToken();
+  let connection = await getValidToken(storeId);
   let response = await fetchWithToken(
     `${config.apiBaseUrl}${path}`,
     connection,
@@ -18,7 +19,7 @@ export async function makeAuthenticatedConvertyRequest(
   );
 
   if (response.status === 401) {
-    connection = await refreshToken(connection);
+    connection = await refreshToken(connection, storeId);
     response = await fetchWithToken(
       `${config.apiBaseUrl}${path}`,
       connection,

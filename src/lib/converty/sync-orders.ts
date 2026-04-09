@@ -18,10 +18,12 @@ export type OrderSyncMode = "default" | "archived" | "all";
 
 interface SyncOrdersOptions {
   mode: OrderSyncMode;
+  storeId?: string;
 }
 
 export async function syncOrders({
   mode,
+  storeId,
 }: SyncOrdersOptions): Promise<OrderSyncResult> {
   const supabase = createAdminClient();
   let syncLogId: string | null = null;
@@ -33,6 +35,7 @@ export async function syncOrders({
         sync_type: "orders",
         status: "started",
         triggered_by: mode === "default" ? "manual" : `manual-${mode}`,
+        store_id: storeId ?? null,
       })
       .select("id")
       .single();
@@ -56,10 +59,10 @@ export async function syncOrders({
         page,
         mode === "all" ? CONVERTY_ALL_ORDERS_PAGE_SIZE : CONVERTY_ORDERS_PAGE_SIZE,
         mode === "archived"
-          ? { archived: true }
+          ? { archived: true, storeId }
           : mode === "all"
-            ? { includeAllOrders: true }
-            : undefined
+            ? { includeAllOrders: true, storeId }
+            : { storeId }
       );
       const orders = pagePayload.data;
 

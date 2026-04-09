@@ -12,13 +12,16 @@ export interface ConvertyConnection {
   scopes: string[] | null;
 }
 
-async function getStoredConnection(): Promise<ConvertyConnection> {
+async function getStoredConnection(storeId?: string): Promise<ConvertyConnection> {
   const supabase = createAdminClient();
-  const { data, error } = await supabase
+
+  const query = supabase
     .from("converty_tokens")
-    .select("store_id, access_token, refresh_token, expires_at, scopes, updated_at")
-    .order("updated_at", { ascending: false })
-    .limit(1);
+    .select("store_id, access_token, refresh_token, expires_at, scopes, updated_at");
+
+  const { data, error } = storeId
+    ? await query.eq("store_id", storeId).limit(1)
+    : await query.order("updated_at", { ascending: false }).limit(1);
 
   if (error) {
     throw new Error(`Failed to read Converty tokens: ${error.message}`);
@@ -27,7 +30,11 @@ async function getStoredConnection(): Promise<ConvertyConnection> {
   const connection = data?.[0];
 
   if (!connection) {
-    throw new Error("No Converty store is connected yet.");
+    throw new Error(
+      storeId
+        ? `No Converty token found for store: ${storeId}`
+        : "No Converty store is connected yet."
+    );
   }
 
   return {
@@ -48,9 +55,10 @@ function shouldRefreshToken(expiresAt: string | null) {
 }
 
 export async function refreshToken(
-  currentConnection?: ConvertyConnection
+  currentConnection?: ConvertyConnection,
+  storeId?: string
 ): Promise<ConvertyConnection> {
-  const connection = currentConnection ?? (await getStoredConnection());
+  const connection = currentConnection ?? (await getStoredConnection(storeId));
   const config = getConvertyConfig();
 
   if (!config.clientId || !config.clientSecret) {
@@ -112,11 +120,11 @@ export async function refreshToken(
   return refreshedConnection;
 }
 
-export async function getValidToken(): Promise<ConvertyConnection> {
-  const connection = await getStoredConnection();
+export async function getValidToken(storeId?: string): Promise<ConvertyConnection> {
+  const connection = await getStoredConnection(storeId);
 
   if (shouldRefreshToken(connection.expires_at)) {
-    return refreshToken(connection);
+    return refreshToken(connection, storeId);
   }
 
   return connection;

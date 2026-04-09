@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { syncOrders } from "@/lib/converty/sync-orders";
+import { syncOrdersIncremental } from "@/lib/converty/sync-orders-incremental";
 
 interface ApiResponse<T = unknown> {
   success: boolean;
@@ -17,30 +17,28 @@ export async function POST(request: NextRequest) {
       storeId = body.store_id || undefined;
     }
 
-    const result = await syncOrders({ mode: "all", storeId });
+    const result = await syncOrdersIncremental({ storeId });
 
     return NextResponse.json<ApiResponse<{
       synced: number;
       created: number;
       updated: number;
-      mode: string;
+      rechecked: number;
     }>>({
       success: true,
       data: {
         synced: result.synced,
         created: result.created,
         updated: result.updated,
-        mode: result.mode,
+        rechecked: result.rechecked,
       },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "All orders sync failed.";
+    const message =
+      error instanceof Error ? error.message : "Incremental orders sync failed.";
 
     return NextResponse.json<ApiResponse>(
-      {
-        success: false,
-        error: message,
-      },
+      { success: false, error: message },
       { status: 500 }
     );
   }

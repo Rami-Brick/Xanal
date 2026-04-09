@@ -106,7 +106,8 @@ function getPrimaryImageUrl(images: ConvertyProductImage[] | null | undefined) {
 
 export async function getProductsPage(
   page: number,
-  limit = CONVERTY_PRODUCTS_PAGE_SIZE
+  limit = CONVERTY_PRODUCTS_PAGE_SIZE,
+  storeId?: string
 ): Promise<ConvertyProductsResponse> {
   const params = new URLSearchParams({
     page: String(page),
@@ -114,7 +115,9 @@ export async function getProductsPage(
   });
 
   const response = await makeAuthenticatedConvertyRequest(
-    `/products?${params.toString()}`
+    `/products?${params.toString()}`,
+    undefined,
+    storeId
   );
 
   if (!response.ok) {

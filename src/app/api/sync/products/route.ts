@@ -1,10 +1,5 @@
-import { NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/admin";
-import {
-  CONVERTY_PRODUCTS_PAGE_SIZE,
-  getProductsPage,
-  mapProductToRow,
-} from "@/lib/converty/products";
+import { NextRequest, NextResponse } from "next/server";
+import { syncProducts } from "@/lib/converty/sync-products";
 
 interface ApiResponse<T = unknown> {
   success: boolean;
@@ -12,96 +7,17 @@ interface ApiResponse<T = unknown> {
   error?: string;
 }
 
-export async function POST() {
-  const supabase = createAdminClient();
-  let syncLogId: string | null = null;
-
+export async function POST(request: NextRequest) {
   try {
-    const { data: syncLog, error: syncLogError } = await supabase
-      .from("sync_log")
-      .insert({
-        sync_type: "products",
-        status: "started",
-        triggered_by: "manual",
-      })
-      .select("id")
-      .single();
+    let storeId: string | undefined;
 
-    if (syncLogError || !syncLog) {
-      throw new Error(
-        syncLogError?.message || "Failed to create the products sync log entry."
-      );
+    const contentType = request.headers.get("content-type") ?? "";
+    if (contentType.includes("application/json")) {
+      const body = (await request.json()) as { store_id?: string };
+      storeId = body.store_id || undefined;
     }
 
-    syncLogId = syncLog.id;
-
-    let page = 1;
-    let recordsSynced = 0;
-    let recordsCreated = 0;
-    let recordsUpdated = 0;
-
-    while (true) {
-      const pagePayload = await getProductsPage(page, CONVERTY_PRODUCTS_PAGE_SIZE);
-      const products = pagePayload.data;
-
-      if (products.length === 0) {
-        break;
-      }
-
-      const syncedAt = new Date().toISOString();
-      const rows = products.map((product) => mapProductToRow(product, syncedAt));
-      const convertyIds = rows.map((row) => row.converty_id);
-
-      const { data: existingRows, error: existingRowsError } = await supabase
-        .from("products")
-        .select("converty_id")
-        .in("converty_id", convertyIds);
-
-      if (existingRowsError) {
-        throw new Error(
-          `Failed to inspect existing products: ${existingRowsError.message}`
-        );
-      }
-
-      const existingIds = new Set(
-        (existingRows ?? []).map((row) => row.converty_id as string)
-      );
-
-      for (const row of rows) {
-        if (existingIds.has(row.converty_id)) {
-          recordsUpdated += 1;
-        } else {
-          recordsCreated += 1;
-        }
-      }
-
-      const { error: upsertError } = await supabase.from("products").upsert(rows, {
-        onConflict: "converty_id",
-      });
-
-      if (upsertError) {
-        throw new Error(`Failed to upsert products: ${upsertError.message}`);
-      }
-
-      recordsSynced += rows.length;
-
-      if (products.length < CONVERTY_PRODUCTS_PAGE_SIZE) {
-        break;
-      }
-
-      page += 1;
-    }
-
-    await supabase
-      .from("sync_log")
-      .update({
-        status: "completed",
-        records_synced: recordsSynced,
-        records_created: recordsCreated,
-        records_updated: recordsUpdated,
-        completed_at: new Date().toISOString(),
-      })
-      .eq("id", syncLogId);
+    const result = await syncProducts({ storeId });
 
     return NextResponse.json<ApiResponse<{
       synced: number;
@@ -110,31 +26,17 @@ export async function POST() {
     }>>({
       success: true,
       data: {
-        synced: recordsSynced,
-        created: recordsCreated,
-        updated: recordsUpdated,
+        synced: result.synced,
+        created: result.created,
+        updated: result.updated,
       },
     });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Products sync failed.";
 
-    if (syncLogId) {
-      await supabase
-        .from("sync_log")
-        .update({
-          status: "failed",
-          error_message: message,
-          completed_at: new Date().toISOString(),
-        })
-        .eq("id", syncLogId);
-    }
-
     return NextResponse.json<ApiResponse>(
-      {
-        success: false,
-        error: message,
-      },
+      { success: false, error: message },
       { status: 500 }
     );
   }

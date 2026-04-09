@@ -38,7 +38,8 @@ Do not assume the app is still scaffold-only. Read the current codebase before m
 Always read these before making major decisions:
 - `zResources/XANAL.md` for the long-term product and architecture direction
 - `zResources/CONVERTY.md` for the vendor OAuth/API reference
-- `zResources/XANAL-STATUS.md` for current implemented status
+- `zResources/PHASE1.md` for the current backend execution plan
+- `zResources/XANAL-CHATBOT-HANDOFF.md` for current implemented context
 - `supabase/migrations/001_initial.sql` for the current database schema
 
 Treat `CONVERTY.md` as vendor documentation. Do not rewrite it unless explicitly asked.
@@ -53,11 +54,11 @@ Treat `CONVERTY.md` as vendor documentation. Do not rewrite it unless explicitly
 - Use the existing token helper and retry pattern before inventing a new auth flow
 
 Current working behavior:
-- the app currently behaves as a single connected store integration
-- one connected store is selected during OAuth
-- sync routes use the token saved for that store
+- `converty_tokens` stores one token row per `store_id`
+- sync orchestration can be store-aware through `converty_tokens`
+- business tables currently rely on globally unique Converty IDs rather than `store_id`
 
-Do not silently redesign the project into multi-store mode without first making the data model explicit.
+Do not silently redesign the business tables around store ownership unless the data model is being changed intentionally.
 
 ## Supabase Rules
 
@@ -124,10 +125,10 @@ When summarizing work:
 The backend integration foundation is already working.
 
 Near-term priorities should generally be:
-1. internal app controls and status UI
-2. sync observability
-3. dashboard pages backed by Supabase data
-4. scheduled sync and refresh ergonomics later
+1. backend sync hardening and cleanup
+2. sync observability and status endpoints
+3. reliable incremental and backfill behavior
+4. dashboard and UI work after the backend contract is stable
 
 Long-term direction:
 - Supabase should be the fast read layer

@@ -6,6 +6,9 @@ export const CONVERTY_ALL_ORDERS_PAGE_SIZE = 200;
 interface GetOrdersPageOptions {
   archived?: boolean;
   includeAllOrders?: boolean;
+  storeId?: string;
+  from?: Date;
+  to?: Date;
 }
 
 interface ConvertyOrderCustomer {
@@ -157,8 +160,18 @@ export async function getOrdersPage(
     params.set("includeAllOrders", "true");
   }
 
+  if (options?.from) {
+    params.set("range[from]", options.from.toISOString());
+  }
+
+  if (options?.to) {
+    params.set("range[to]", options.to.toISOString());
+  }
+
   const response = await makeAuthenticatedConvertyRequest(
-    `/orders?${params.toString()}`
+    `/orders?${params.toString()}`,
+    undefined,
+    options?.storeId
   );
 
   if (!response.ok) {

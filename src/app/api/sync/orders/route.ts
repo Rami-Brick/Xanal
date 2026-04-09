@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { syncOrders } from "@/lib/converty/sync-orders";
 
 interface ApiResponse<T = unknown> {
@@ -7,9 +7,17 @@ interface ApiResponse<T = unknown> {
   error?: string;
 }
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
-    const result = await syncOrders({ mode: "default" });
+    let storeId: string | undefined;
+
+    const contentType = request.headers.get("content-type") ?? "";
+    if (contentType.includes("application/json")) {
+      const body = (await request.json()) as { store_id?: string };
+      storeId = body.store_id || undefined;
+    }
+
+    const result = await syncOrders({ mode: "default", storeId });
 
     return NextResponse.json<ApiResponse<{
       synced: number;
