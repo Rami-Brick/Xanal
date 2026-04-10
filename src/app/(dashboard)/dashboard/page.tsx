@@ -1,261 +1,497 @@
-import { Metadata } from "next"
-import { createAdminClient } from "@/lib/supabase/admin"
-import { OverviewKPIs, type KPIData } from "@/components/dashboard/OverviewKPIs"
-import { RecentOrders, type RecentOrder } from "@/components/dashboard/RecentOrders"
-import { OrderStatusBreakdown, type StatusCount } from "@/components/dashboard/OrderStatusBreakdown"
-import { TopProducts, type TopProduct } from "@/components/dashboard/TopProducts"
-import { HealthStrip } from "@/components/dashboard/HealthStrip"
-import { SyncCard, type SyncLogEntry } from "@/components/dashboard/SyncCard"
-import { type ConnectionStatus } from "@/components/dashboard/ConnectionCard"
+import { Metadata } from "next";
+import { DashboardSyncActions } from "@/components/dashboard/DashboardSyncActions";
+import {
+  type DashboardAlert,
+  type DashboardHeroMetric,
+  type DashboardPipelineMetric,
+  type DashboardStoreSync,
+  type DashboardTopProduct,
+  type DashboardTrendPoint,
+  getOpsDashboardData,
+} from "@/lib/dashboard/ops-overview";
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
-  title: "Vue d'ensemble — Xanal",
+  title: "Dashboard | Xanal",
+  description: "Vue opérationnelle des commandes, produits et synchronisations.",
+};
+
+export const dynamic = "force-dynamic";
+
+const TONE_CLASSES = {
+  stable: "border-emerald-200 bg-emerald-50 text-emerald-900",
+  watch: "border-amber-200 bg-amber-50 text-amber-900",
+  risk: "border-rose-200 bg-rose-50 text-rose-900",
+} as const;
+
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat("fr-TN", {
+    style: "currency",
+    currency: "TND",
+    maximumFractionDigits: value >= 1000 ? 0 : 1,
+  }).format(value);
+}
+
+function formatDateTime(value: string | null) {
+  if (!value) {
+    return "Non disponible";
+  }
+
+  return new Intl.DateTimeFormat("fr-FR", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
+function SectionShell({
+  eyebrow,
+  title,
+  body,
+  children,
+  className,
+}: {
+  eyebrow: string;
+  title: string;
+  body: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <section
+      className={cn(
+        "rounded-[2rem] border border-black/8 bg-white/75 p-6 shadow-[0_24px_80px_rgba(36,30,22,0.08)] backdrop-blur-sm lg:p-8",
+        className
+      )}
+    >
+      <div className="mb-6 max-w-2xl">
+        <p className="text-[11px] uppercase tracking-[0.3em] text-stone-500">
+          {eyebrow}
+        </p>
+        <h2
+          className="mt-3 text-3xl leading-none text-stone-900"
+          style={{
+            fontFamily:
+              '"Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif',
+          }}
+        >
+          {title}
+        </h2>
+        <p className="mt-3 text-sm leading-6 text-stone-600">{body}</p>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function HeroMetricCard({ metric }: { metric: DashboardHeroMetric }) {
+  return (
+    <article className="rounded-[1.75rem] border border-black/8 bg-[#fffdf8] p-5 shadow-[0_18px_40px_rgba(36,30,22,0.06)]">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.22em] text-stone-500">
+            {metric.label}
+          </p>
+          <p
+            className="mt-4 text-4xl leading-none text-stone-950"
+            style={{
+              fontFamily:
+                '"Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif',
+            }}
+          >
+            {metric.value}
+          </p>
+        </div>
+        {metric.tone ? (
+          <span
+            className={cn(
+              "rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.2em]",
+              TONE_CLASSES[metric.tone]
+            )}
+          >
+            {metric.tone === "stable"
+              ? "Stable"
+              : metric.tone === "watch"
+                ? "À suivre"
+                : "Alerte"}
+          </span>
+        ) : null}
+      </div>
+      <p className="mt-4 text-sm leading-6 text-stone-600">{metric.hint}</p>
+    </article>
+  );
+}
+
+function AlertCard({ alert }: { alert: DashboardAlert }) {
+  return (
+    <article
+      className={cn(
+        "rounded-[1.5rem] border p-5",
+        TONE_CLASSES[alert.tone]
+      )}
+    >
+      <p className="text-[11px] uppercase tracking-[0.24em]">
+        {alert.tone === "risk"
+          ? "Priorité"
+          : alert.tone === "watch"
+            ? "À surveiller"
+            : "Signal"}
+      </p>
+      <h3
+        className="mt-3 text-2xl leading-none"
+        style={{
+          fontFamily:
+            '"Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif',
+        }}
+      >
+        {alert.title}
+      </h3>
+      <p className="mt-3 text-sm leading-6">{alert.body}</p>
+    </article>
+  );
+}
+
+function PipelineCard({
+  metric,
+  maxCount,
+}: {
+  metric: DashboardPipelineMetric;
+  maxCount: number;
+}) {
+  const width = maxCount > 0 ? Math.max((metric.count / maxCount) * 100, 8) : 8;
+
+  return (
+    <article className="rounded-[1.5rem] border border-black/8 bg-[#fffdf8] p-4">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.22em] text-stone-500">
+            {metric.label}
+          </p>
+          <p
+            className="mt-3 text-3xl leading-none text-stone-950"
+            style={{
+              fontFamily:
+                '"Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif',
+            }}
+          >
+            {metric.count}
+          </p>
+        </div>
+        <span className="rounded-full border border-black/10 bg-stone-50 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-stone-500">
+          {metric.status}
+        </span>
+      </div>
+      <div className="mt-5 h-2 overflow-hidden rounded-full bg-stone-200">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-[#7b6a54] to-[#bea06d]"
+          style={{ width: `${width}%` }}
+        />
+      </div>
+    </article>
+  );
+}
+
+function TrendBars({ trend }: { trend: DashboardTrendPoint[] }) {
+  const maxRevenue = Math.max(...trend.map((point) => point.deliveredRevenue), 1);
+
+  return (
+    <div className="grid grid-cols-7 gap-3 md:grid-cols-14">
+      {trend.map((point) => {
+        const barHeight = Math.max((point.deliveredRevenue / maxRevenue) * 160, 6);
+
+        return (
+          <div key={point.date} className="flex flex-col items-center gap-3">
+            <div className="flex h-44 items-end">
+              <div
+                className="w-6 rounded-t-full bg-gradient-to-t from-stone-900 via-[#8d7450] to-[#d9c49f] shadow-[0_10px_24px_rgba(82,67,44,0.2)] sm:w-8"
+                style={{ height: `${barHeight}px` }}
+                title={`${point.label}: ${formatCurrency(point.deliveredRevenue)} / ${point.orders} commandes`}
+              />
+            </div>
+            <div className="text-center">
+              <p className="text-[11px] uppercase tracking-[0.14em] text-stone-500">
+                {point.label}
+              </p>
+              <p className="mt-1 text-xs text-stone-600">{point.orders}</p>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function TopProductCard({
+  product,
+  index,
+}: {
+  product: DashboardTopProduct;
+  index: number;
+}) {
+  return (
+    <article className="grid grid-cols-[auto,1fr,auto] items-center gap-4 rounded-[1.5rem] border border-black/8 bg-[#fffdf8] p-4">
+      <div className="grid h-12 w-12 place-items-center rounded-full border border-black/10 bg-stone-100 text-xs uppercase tracking-[0.2em] text-stone-500">
+        #{index + 1}
+      </div>
+      <div>
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="text-base font-medium text-stone-900">{product.name}</h3>
+          {product.slug ? (
+            <span className="rounded-full bg-stone-100 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-stone-500">
+              {product.slug}
+            </span>
+          ) : null}
+        </div>
+        <p className="mt-2 text-sm text-stone-600">
+          {product.units} unité(s) livrées · {formatCurrency(product.revenue)}
+        </p>
+      </div>
+      <div className="text-right">
+        <p
+          className="text-3xl leading-none text-stone-950"
+          style={{
+            fontFamily:
+              '"Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif',
+          }}
+        >
+          {product.share.toFixed(1)}%
+        </p>
+        <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-stone-500">
+          du livré
+        </p>
+      </div>
+    </article>
+  );
+}
+
+function StoreSyncRow({ store }: { store: DashboardStoreSync }) {
+  return (
+    <article className="rounded-[1.5rem] border border-black/8 bg-[#fffdf8] p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.22em] text-stone-500">
+            Boutique
+          </p>
+          <h3 className="mt-2 text-lg font-medium text-stone-900">
+            {store.storeId}
+          </h3>
+        </div>
+        <span
+          className={cn(
+            "rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.2em]",
+            TONE_CLASSES[store.tone]
+          )}
+        >
+          {store.lastSyncStatus === "failed"
+            ? "Échec"
+            : store.tone === "watch"
+              ? "À rafraîchir"
+              : "Sain"}
+        </span>
+      </div>
+      <dl className="mt-4 space-y-2 text-sm text-stone-600">
+        <div className="flex items-center justify-between gap-3">
+          <dt>Dernier sync</dt>
+          <dd className="text-right text-stone-900">
+            {formatDateTime(store.lastSyncAt)}
+          </dd>
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <dt>Type</dt>
+          <dd className="text-right text-stone-900">
+            {store.lastSyncType ?? "Non disponible"}
+          </dd>
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <dt>Scopes</dt>
+          <dd className="max-w-[14rem] text-right text-stone-900">
+            {store.scopes.length > 0 ? store.scopes.join(", ") : "Non renseigné"}
+          </dd>
+        </div>
+      </dl>
+      {store.errorMessage ? (
+        <p className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900">
+          {store.errorMessage}
+        </p>
+      ) : null}
+    </article>
+  );
 }
 
 export default async function DashboardPage() {
-  const supabase = createAdminClient()
-
-  const todayStart = new Date()
-  todayStart.setHours(0, 0, 0, 0)
-
-  const [
-    tokenResult,
-    syncLogsResult,
-    ordersTodayResult,
-    deliveredResult,
-    avgOrderResult,
-    returnedCountResult,
-    totalOrdersResult,
-    statusCountsResult,
-    recentOrdersResult,
-    topProductsResult,
-  ] = await Promise.all([
-    // Connection token
-    supabase
-      .from("converty_tokens")
-      .select("store_id, scopes, updated_at, expires_at")
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .single(),
-
-    // Last sync entries
-    supabase
-      .from("sync_log")
-      .select(
-        "sync_type, status, records_synced, records_created, records_updated, error_message, started_at, completed_at, triggered_by"
-      )
-      .order("started_at", { ascending: false })
-      .limit(10),
-
-    // Orders today
-    supabase
-      .from("orders")
-      .select("*", { count: "exact", head: true })
-      .eq("is_test", false)
-      .gte("converty_created_at", todayStart.toISOString()),
-
-    // Delivered: total_price rows + count
-    supabase
-      .from("orders")
-      .select("total_price")
-      .eq("status", "delivered")
-      .eq("is_test", false),
-
-    // All non-test orders for average
-    supabase
-      .from("orders")
-      .select("total_price")
-      .eq("is_test", false),
-
-    // Returned count
-    supabase
-      .from("orders")
-      .select("*", { count: "exact", head: true })
-      .eq("status", "returned")
-      .eq("is_test", false),
-
-    // Total non-test
-    supabase
-      .from("orders")
-      .select("*", { count: "exact", head: true })
-      .eq("is_test", false),
-
-    // Status distribution
-    supabase
-      .from("orders")
-      .select("status")
-      .eq("is_test", false),
-
-    // Recent 15 orders
-    supabase
-      .from("orders")
-      .select(
-        "converty_id, reference, status, customer_name, customer_city, total_price, converty_created_at"
-      )
-      .eq("is_test", false)
-      .order("converty_created_at", { ascending: false })
-      .limit(15),
-
-    // Top products: aggregate via order_items joined to products
-    // Fetch all order_items with product info — aggregate client-side
-    supabase
-      .from("order_items")
-      .select(
-        "product_name, quantity, price_per_unit, products(image_url)"
-      )
-      .limit(2000),
-  ])
-
-  // --- Connection ---
-  const connection: ConnectionStatus | null = tokenResult.data
-    ? {
-        connected: true,
-        store_id: tokenResult.data.store_id ?? null,
-        scopes: (tokenResult.data.scopes as string[] | null) ?? null,
-        last_updated: tokenResult.data.updated_at ?? null,
-        expires_at: tokenResult.data.expires_at ?? null,
-      }
-    : null
-
-  // --- Sync logs ---
-  const syncLogs = (syncLogsResult.data ?? []) as SyncLogEntry[]
-  const lastProductsSync = syncLogs.find((l) => l.sync_type === "products") ?? null
-  const lastOrdersSync = syncLogs.find((l) => l.sync_type === "orders") ?? null
-
-  // --- KPIs ---
-  const ordersToday = ordersTodayResult.count ?? 0
-  const totalOrders = totalOrdersResult.count ?? 0
-
-  const deliveredRows = deliveredResult.data ?? []
-  const deliveredRevenue = deliveredRows.reduce(
-    (sum, row) => sum + Number(row.total_price ?? 0),
-    0
-  )
-  const deliveredCount = deliveredRows.length
-
-  const allOrderRows = avgOrderResult.data ?? []
-  const averageOrderValue =
-    allOrderRows.length > 0
-      ? allOrderRows.reduce((sum, row) => sum + Number(row.total_price ?? 0), 0) /
-        allOrderRows.length
-      : 0
-
-  const returnedCount = returnedCountResult.count ?? 0
-  const returnRate = totalOrders > 0 ? (returnedCount / totalOrders) * 100 : 0
-  const confirmationRate = totalOrders > 0 ? (deliveredCount / totalOrders) * 100 : 0
-
-  const kpiData: KPIData = {
-    ordersToday,
-    deliveredRevenue,
-    deliveredCount,
-    averageOrderValue,
-    returnRate,
-    confirmationRate,
-    totalOrders,
-  }
-
-  // --- Status breakdown ---
-  const statusRows = statusCountsResult.data ?? []
-  const statusMap = new Map<string, number>()
-  for (const row of statusRows) {
-    if (row.status) {
-      statusMap.set(row.status, (statusMap.get(row.status) ?? 0) + 1)
-    }
-  }
-  const statusCounts: StatusCount[] = Array.from(statusMap.entries()).map(
-    ([status, count]) => ({ status, count })
-  )
-
-  // --- Recent orders ---
-  const recentOrders: RecentOrder[] = (recentOrdersResult.data ?? []).map((row) => ({
-    converty_id: row.converty_id as string,
-    reference: row.reference as number | null,
-    status: row.status as string,
-    customer_name: row.customer_name as string | null,
-    customer_city: row.customer_city as string | null,
-    total_price: Number(row.total_price ?? 0),
-    converty_created_at: row.converty_created_at as string | null,
-  }))
-
-  // --- Top products: aggregate client-side from order_items ---
-  type ItemRow = {
-    product_name: string | null
-    quantity: number | null
-    price_per_unit: number | null
-    products: { image_url: string | null } | null
-  }
-  const itemRows = (topProductsResult.data ?? []) as unknown as ItemRow[]
-
-  const productMap = new Map<string, { units: number; revenue: number; image_url: string | null }>()
-  for (const row of itemRows) {
-    if (!row.product_name) continue
-    const name = row.product_name
-    const qty = Number(row.quantity ?? 0)
-    const rev = qty * Number(row.price_per_unit ?? 0)
-    const existing = productMap.get(name)
-    const image_url = (row.products as { image_url: string | null } | null)?.image_url ?? null
-    if (existing) {
-      existing.units += qty
-      existing.revenue += rev
-    } else {
-      productMap.set(name, { units: qty, revenue: rev, image_url })
-    }
-  }
-
-  const topProducts: TopProduct[] = Array.from(productMap.entries())
-    .map(([product_name, { units, revenue, image_url }]) => ({
-      product_name,
-      units_sold: units,
-      revenue,
-      image_url,
-    }))
-    .sort((a, b) => b.units_sold - a.units_sold)
-    .slice(0, 8)
+  const data = await getOpsDashboardData();
+  const maxPipelineCount = Math.max(...data.pipeline.map((metric) => metric.count), 1);
 
   return (
-    <div className="space-y-8">
-      {/* Hero header */}
-      <div className="flex flex-col gap-4 border-b border-white/8 pb-6 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/25 mb-2">
-            Xpand Solutions
-          </p>
-          <h1 className="text-4xl font-bold tracking-tight text-[#e8e3d9]">
-            Vue d&apos;ensemble
-          </h1>
-          <p className="mt-2 text-sm text-white/35 max-w-md">
-            Performance commerciale et état de synchronisation en temps réel.
-          </p>
+    <div className="space-y-8 lg:space-y-10">
+      <section className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
+        <div className="rounded-[2.5rem] border border-black/8 bg-[linear-gradient(135deg,#fffdf9_0%,#f0e7da_100%)] p-7 shadow-[0_30px_100px_rgba(36,30,22,0.12)] lg:p-9">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="rounded-full border border-black/10 bg-white/80 px-4 py-2 text-[11px] uppercase tracking-[0.24em] text-stone-600">
+              Vue opérationnelle
+            </span>
+            <span
+              className={cn(
+                "rounded-full border px-4 py-2 text-[11px] uppercase tracking-[0.24em]",
+                TONE_CLASSES[data.freshnessTone]
+              )}
+            >
+              {data.freshnessLabel}
+            </span>
+          </div>
+
+          <div className="mt-6 max-w-3xl">
+            <h1
+              className="text-5xl leading-[0.95] text-stone-950 md:text-6xl"
+              style={{
+                fontFamily:
+                  '"Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif',
+              }}
+            >
+              Lire le business avant d’ouvrir les détails.
+            </h1>
+            <p className="mt-5 max-w-2xl text-base leading-7 text-stone-600">
+              Ce dashboard s’appuie uniquement sur les données Supabase validées en
+              phase 1. Il montre la santé du pipeline, la traction des produits et
+              la fraîcheur des syncs, sans mélanger encore les coûts financiers à
+              venir.
+            </p>
+          </div>
+
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {data.heroMetrics.map((metric) => (
+              <HeroMetricCard key={metric.label} metric={metric} />
+            ))}
+          </div>
         </div>
-        <HealthStrip
-          connection={connection}
-          lastProductsSync={lastProductsSync}
-          lastOrdersSync={lastOrdersSync}
-        />
-      </div>
 
-      {/* KPI section */}
-      <OverviewKPIs data={kpiData} />
+        <aside className="space-y-6">
+          <SectionShell
+            eyebrow="Confiance données"
+            title="Fraîcheur"
+            body="Le dashboard reste global côté business, mais la confiance sync reste visible par boutique afin de savoir si les métriques sont exploitables."
+            className="h-full"
+          >
+            <div className="space-y-5">
+              <div className="rounded-[1.5rem] border border-black/8 bg-[#fffdf8] p-5">
+                <p className="text-[11px] uppercase tracking-[0.24em] text-stone-500">
+                  Dernier sync réussi
+                </p>
+                <p
+                  className="mt-3 text-3xl leading-none text-stone-950"
+                  style={{
+                    fontFamily:
+                      '"Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif',
+                  }}
+                >
+                  {formatDateTime(data.lastSuccessfulSyncAt)}
+                </p>
+                <p className="mt-3 text-sm leading-6 text-stone-600">
+                  {data.connectedStores} boutique(s) connectée(s) actuellement.
+                </p>
+              </div>
 
-      {/* Insights row: status + top products */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <OrderStatusBreakdown counts={statusCounts} />
-        <TopProducts products={topProducts} />
-      </div>
+              <DashboardSyncActions />
+            </div>
+          </SectionShell>
+        </aside>
+      </section>
 
-      {/* Recent orders — full width */}
-      <RecentOrders orders={recentOrders} />
+      <section className="grid gap-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
+        <SectionShell
+          eyebrow="Pipeline"
+          title="Lecture rapide du flux commandes"
+          body="Les statuts clés donnent immédiatement la taille du backlog, la vitesse de progression et la tension retour."
+        >
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {data.pipeline.map((metric) => (
+              <PipelineCard
+                key={metric.status}
+                metric={metric}
+                maxCount={maxPipelineCount}
+              />
+            ))}
+          </div>
+        </SectionShell>
 
-      {/* Sync controls — demoted */}
-      <div className="border-t border-white/6 pt-6">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/15 mb-4">
-          Synchronisation manuelle
-        </p>
-        <SyncCard
-          lastProductsSync={lastProductsSync}
-          lastOrdersSync={lastOrdersSync}
-        />
-      </div>
+        <SectionShell
+          eyebrow="Alertes"
+          title="Ce qui mérite une réaction"
+          body="Une lecture synthétique des signaux opérationnels sans attendre la future couche financière."
+        >
+          <div className="space-y-4">
+            {data.alerts.map((alert) => (
+              <AlertCard key={alert.title} alert={alert} />
+            ))}
+          </div>
+        </SectionShell>
+      </section>
+
+      <section className="grid gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)]">
+        <SectionShell
+          eyebrow="Rythme"
+          title="Tendance des 14 derniers jours"
+          body="Chaque barre représente le revenu livré du jour. Le chiffre sous la barre indique le nombre total de commandes créées sur cette journée."
+        >
+          <TrendBars trend={data.trend} />
+        </SectionShell>
+
+        <SectionShell
+          eyebrow="Produits"
+          title="Les locomotives du livré"
+          body="Vue purement opérationnelle fondée sur les lignes de commandes livrées. Pas encore de marge, pas encore de COGS, seulement les volumes et le chiffre d'affaires livré."
+        >
+          {data.topProducts.length > 0 ? (
+            <div className="space-y-4">
+              {data.topProducts.map((product, index) => (
+                <TopProductCard
+                  key={`${product.name}-${index}`}
+                  product={product}
+                  index={index}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-[1.5rem] border border-dashed border-black/10 bg-[#fffdf8] px-5 py-8 text-sm text-stone-600">
+              Aucun produit livré n’est encore exploitable pour cette vue.
+            </div>
+          )}
+        </SectionShell>
+      </section>
+
+      <section className="grid gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+        <SectionShell
+          eyebrow="Boutiques"
+          title="Confiance par source"
+          body="Les tables business restent globales, mais le contrôle du flux amont reste lisible par boutique afin d’identifier immédiatement une source silencieuse ou défaillante."
+        >
+          <div className="grid gap-4 xl:grid-cols-2">
+            {data.stores.map((store) => (
+              <StoreSyncRow key={store.storeId} store={store} />
+            ))}
+          </div>
+        </SectionShell>
+
+        <SectionShell
+          eyebrow="Suite"
+          title="Ce que ce dashboard n’essaie pas encore de faire"
+          body="Cette version reste volontairement sobre sur la finance. Les couches coûts, COGS, ROAS, overhead, cash et investisseurs doivent arriver avec les futures tables de settings versionnées."
+        >
+          <ul className="space-y-4 text-sm leading-6 text-stone-600">
+            <li className="rounded-[1.25rem] border border-black/8 bg-[#fffdf8] px-4 py-4">
+              Les métriques affichées ici reposent uniquement sur Converty + Supabase
+              et excluent les commandes de test.
+            </li>
+            <li className="rounded-[1.25rem] border border-black/8 bg-[#fffdf8] px-4 py-4">
+              Le taux de confirmation ignore les abandonnées et se limite à
+              confirmées vs rejetées.
+            </li>
+            <li className="rounded-[1.25rem] border border-black/8 bg-[#fffdf8] px-4 py-4">
+              Les chiffres financiers avancés seront ajoutés seulement après la
+              couche settings versionnée et les autres modules métier.
+            </li>
+          </ul>
+        </SectionShell>
+      </section>
     </div>
-  )
+  );
 }
