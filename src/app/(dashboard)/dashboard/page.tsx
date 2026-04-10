@@ -1,497 +1,170 @@
 import { Metadata } from "next";
-import { DashboardSyncActions } from "@/components/dashboard/DashboardSyncActions";
-import {
-  type DashboardAlert,
-  type DashboardHeroMetric,
-  type DashboardPipelineMetric,
-  type DashboardStoreSync,
-  type DashboardTopProduct,
-  type DashboardTrendPoint,
-  getOpsDashboardData,
-} from "@/lib/dashboard/ops-overview";
-import { cn } from "@/lib/utils";
+import { getDashboardOverview } from "@/lib/data/dashboard";
 
-export const metadata: Metadata = {
-  title: "Dashboard | Xanal",
-  description: "Vue opérationnelle des commandes, produits et synchronisations.",
-};
-
+export const metadata: Metadata = { title: "Vue d'ensemble · Xanal" };
 export const dynamic = "force-dynamic";
 
-const TONE_CLASSES = {
-  stable: "border-emerald-200 bg-emerald-50 text-emerald-900",
-  watch: "border-amber-200 bg-amber-50 text-amber-900",
-  risk: "border-rose-200 bg-rose-50 text-rose-900",
+// ─── design tokens ────────────────────────────────────────────────────────────
+const card: React.CSSProperties = {
+  background: "#141414",
+  border: "1px solid rgba(255,255,255,0.07)",
+  borderRadius: 14,
+  boxShadow: "0 12px 40px rgba(0,0,0,0.28), 0 2px 8px rgba(0,0,0,0.18)",
+  padding: "22px 24px",
+};
+
+const eyebrow: React.CSSProperties = {
+  fontSize: 10,
+  fontWeight: 500,
+  letterSpacing: "0.14em",
+  textTransform: "uppercase" as const,
+  color: "rgba(255,255,255,0.3)",
+  marginBottom: 6,
+};
+
+const bigNumber: React.CSSProperties = {
+  fontFamily: "'Fraunces', Georgia, serif",
+  fontSize: 38,
+  fontWeight: 500,
+  lineHeight: 1,
+  letterSpacing: "-0.02em",
+  color: "#fff",
+};
+
+const hint: React.CSSProperties = {
+  fontSize: 12,
+  color: "rgba(255,255,255,0.3)",
+  marginTop: 6,
+  lineHeight: 1.4,
+};
+
+const TONE_COLORS = {
+  stable: { dot: "#4ade80", text: "rgba(74,222,128,0.85)" },
+  watch: { dot: "#fbbf24", text: "rgba(251,191,36,0.85)" },
+  risk: { dot: "#f87171", text: "rgba(248,113,113,0.85)" },
 } as const;
 
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat("fr-TN", {
-    style: "currency",
-    currency: "TND",
-    maximumFractionDigits: value >= 1000 ? 0 : 1,
-  }).format(value);
+function fmt(n: number) {
+  return new Intl.NumberFormat("fr-FR").format(n);
 }
 
-function formatDateTime(value: string | null) {
-  if (!value) {
-    return "Non disponible";
-  }
-
-  return new Intl.DateTimeFormat("fr-FR", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
+function pct(n: number, total: number) {
+  if (total === 0) return "0 %";
+  return `${Math.round((n / total) * 100)} %`;
 }
 
-function SectionShell({
-  eyebrow,
-  title,
-  body,
-  children,
-  className,
-}: {
-  eyebrow: string;
-  title: string;
-  body: string;
-  children: React.ReactNode;
-  className?: string;
-}) {
+function Bar({ value, max }: { value: number; max: number }) {
+  const w = max > 0 ? Math.max((value / max) * 100, 2) : 2;
   return (
-    <section
-      className={cn(
-        "rounded-[2rem] border border-black/8 bg-white/75 p-6 shadow-[0_24px_80px_rgba(36,30,22,0.08)] backdrop-blur-sm lg:p-8",
-        className
-      )}
-    >
-      <div className="mb-6 max-w-2xl">
-        <p className="text-[11px] uppercase tracking-[0.3em] text-stone-500">
-          {eyebrow}
-        </p>
-        <h2
-          className="mt-3 text-3xl leading-none text-stone-900"
-          style={{
-            fontFamily:
-              '"Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif',
-          }}
-        >
-          {title}
-        </h2>
-        <p className="mt-3 text-sm leading-6 text-stone-600">{body}</p>
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function HeroMetricCard({ metric }: { metric: DashboardHeroMetric }) {
-  return (
-    <article className="rounded-[1.75rem] border border-black/8 bg-[#fffdf8] p-5 shadow-[0_18px_40px_rgba(36,30,22,0.06)]">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.22em] text-stone-500">
-            {metric.label}
-          </p>
-          <p
-            className="mt-4 text-4xl leading-none text-stone-950"
-            style={{
-              fontFamily:
-                '"Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif',
-            }}
-          >
-            {metric.value}
-          </p>
-        </div>
-        {metric.tone ? (
-          <span
-            className={cn(
-              "rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.2em]",
-              TONE_CLASSES[metric.tone]
-            )}
-          >
-            {metric.tone === "stable"
-              ? "Stable"
-              : metric.tone === "watch"
-                ? "À suivre"
-                : "Alerte"}
-          </span>
-        ) : null}
-      </div>
-      <p className="mt-4 text-sm leading-6 text-stone-600">{metric.hint}</p>
-    </article>
-  );
-}
-
-function AlertCard({ alert }: { alert: DashboardAlert }) {
-  return (
-    <article
-      className={cn(
-        "rounded-[1.5rem] border p-5",
-        TONE_CLASSES[alert.tone]
-      )}
-    >
-      <p className="text-[11px] uppercase tracking-[0.24em]">
-        {alert.tone === "risk"
-          ? "Priorité"
-          : alert.tone === "watch"
-            ? "À surveiller"
-            : "Signal"}
-      </p>
-      <h3
-        className="mt-3 text-2xl leading-none"
-        style={{
-          fontFamily:
-            '"Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif',
-        }}
-      >
-        {alert.title}
-      </h3>
-      <p className="mt-3 text-sm leading-6">{alert.body}</p>
-    </article>
-  );
-}
-
-function PipelineCard({
-  metric,
-  maxCount,
-}: {
-  metric: DashboardPipelineMetric;
-  maxCount: number;
-}) {
-  const width = maxCount > 0 ? Math.max((metric.count / maxCount) * 100, 8) : 8;
-
-  return (
-    <article className="rounded-[1.5rem] border border-black/8 bg-[#fffdf8] p-4">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.22em] text-stone-500">
-            {metric.label}
-          </p>
-          <p
-            className="mt-3 text-3xl leading-none text-stone-950"
-            style={{
-              fontFamily:
-                '"Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif',
-            }}
-          >
-            {metric.count}
-          </p>
-        </div>
-        <span className="rounded-full border border-black/10 bg-stone-50 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-stone-500">
-          {metric.status}
-        </span>
-      </div>
-      <div className="mt-5 h-2 overflow-hidden rounded-full bg-stone-200">
-        <div
-          className="h-full rounded-full bg-gradient-to-r from-[#7b6a54] to-[#bea06d]"
-          style={{ width: `${width}%` }}
-        />
-      </div>
-    </article>
-  );
-}
-
-function TrendBars({ trend }: { trend: DashboardTrendPoint[] }) {
-  const maxRevenue = Math.max(...trend.map((point) => point.deliveredRevenue), 1);
-
-  return (
-    <div className="grid grid-cols-7 gap-3 md:grid-cols-14">
-      {trend.map((point) => {
-        const barHeight = Math.max((point.deliveredRevenue / maxRevenue) * 160, 6);
-
-        return (
-          <div key={point.date} className="flex flex-col items-center gap-3">
-            <div className="flex h-44 items-end">
-              <div
-                className="w-6 rounded-t-full bg-gradient-to-t from-stone-900 via-[#8d7450] to-[#d9c49f] shadow-[0_10px_24px_rgba(82,67,44,0.2)] sm:w-8"
-                style={{ height: `${barHeight}px` }}
-                title={`${point.label}: ${formatCurrency(point.deliveredRevenue)} / ${point.orders} commandes`}
-              />
-            </div>
-            <div className="text-center">
-              <p className="text-[11px] uppercase tracking-[0.14em] text-stone-500">
-                {point.label}
-              </p>
-              <p className="mt-1 text-xs text-stone-600">{point.orders}</p>
-            </div>
-          </div>
-        );
-      })}
+    <div style={{ height: 4, background: "rgba(255,255,255,0.08)", borderRadius: 99, overflow: "hidden", marginTop: 8 }}>
+      <div style={{ height: "100%", width: `${w}%`, background: "rgba(255,255,255,0.45)", borderRadius: 99, transition: "width 0.3s" }} />
     </div>
   );
 }
 
-function TopProductCard({
-  product,
-  index,
-}: {
-  product: DashboardTopProduct;
-  index: number;
-}) {
-  return (
-    <article className="grid grid-cols-[auto,1fr,auto] items-center gap-4 rounded-[1.5rem] border border-black/8 bg-[#fffdf8] p-4">
-      <div className="grid h-12 w-12 place-items-center rounded-full border border-black/10 bg-stone-100 text-xs uppercase tracking-[0.2em] text-stone-500">
-        #{index + 1}
-      </div>
-      <div>
-        <div className="flex flex-wrap items-center gap-2">
-          <h3 className="text-base font-medium text-stone-900">{product.name}</h3>
-          {product.slug ? (
-            <span className="rounded-full bg-stone-100 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-stone-500">
-              {product.slug}
-            </span>
-          ) : null}
-        </div>
-        <p className="mt-2 text-sm text-stone-600">
-          {product.units} unité(s) livrées · {formatCurrency(product.revenue)}
-        </p>
-      </div>
-      <div className="text-right">
-        <p
-          className="text-3xl leading-none text-stone-950"
-          style={{
-            fontFamily:
-              '"Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif',
-          }}
-        >
-          {product.share.toFixed(1)}%
-        </p>
-        <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-stone-500">
-          du livré
-        </p>
-      </div>
-    </article>
-  );
-}
-
-function StoreSyncRow({ store }: { store: DashboardStoreSync }) {
-  return (
-    <article className="rounded-[1.5rem] border border-black/8 bg-[#fffdf8] p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.22em] text-stone-500">
-            Boutique
-          </p>
-          <h3 className="mt-2 text-lg font-medium text-stone-900">
-            {store.storeId}
-          </h3>
-        </div>
-        <span
-          className={cn(
-            "rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.2em]",
-            TONE_CLASSES[store.tone]
-          )}
-        >
-          {store.lastSyncStatus === "failed"
-            ? "Échec"
-            : store.tone === "watch"
-              ? "À rafraîchir"
-              : "Sain"}
-        </span>
-      </div>
-      <dl className="mt-4 space-y-2 text-sm text-stone-600">
-        <div className="flex items-center justify-between gap-3">
-          <dt>Dernier sync</dt>
-          <dd className="text-right text-stone-900">
-            {formatDateTime(store.lastSyncAt)}
-          </dd>
-        </div>
-        <div className="flex items-center justify-between gap-3">
-          <dt>Type</dt>
-          <dd className="text-right text-stone-900">
-            {store.lastSyncType ?? "Non disponible"}
-          </dd>
-        </div>
-        <div className="flex items-center justify-between gap-3">
-          <dt>Scopes</dt>
-          <dd className="max-w-[14rem] text-right text-stone-900">
-            {store.scopes.length > 0 ? store.scopes.join(", ") : "Non renseigné"}
-          </dd>
-        </div>
-      </dl>
-      {store.errorMessage ? (
-        <p className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900">
-          {store.errorMessage}
-        </p>
-      ) : null}
-    </article>
-  );
-}
-
 export default async function DashboardPage() {
-  const data = await getOpsDashboardData();
-  const maxPipelineCount = Math.max(...data.pipeline.map((metric) => metric.count), 1);
+  const d = await getDashboardOverview();
+  const syncTone = TONE_COLORS[d.syncFreshness];
+  const maxStatus = Math.max(...d.byStatus.map((s) => s.count), 1);
+
+  function formatSyncAge(dateStr: string | null): string {
+    if (!dateStr) return "Jamais";
+    const ms = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(ms / 60000);
+    if (mins < 60) return `Il y a ${mins} min`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `Il y a ${hrs} h`;
+    return `Il y a ${Math.floor(hrs / 24)} j`;
+  }
 
   return (
-    <div className="space-y-8 lg:space-y-10">
-      <section className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
-        <div className="rounded-[2.5rem] border border-black/8 bg-[linear-gradient(135deg,#fffdf9_0%,#f0e7da_100%)] p-7 shadow-[0_30px_100px_rgba(36,30,22,0.12)] lg:p-9">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="rounded-full border border-black/10 bg-white/80 px-4 py-2 text-[11px] uppercase tracking-[0.24em] text-stone-600">
-              Vue opérationnelle
-            </span>
-            <span
-              className={cn(
-                "rounded-full border px-4 py-2 text-[11px] uppercase tracking-[0.24em]",
-                TONE_CLASSES[data.freshnessTone]
-              )}
-            >
-              {data.freshnessLabel}
-            </span>
-          </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
 
-          <div className="mt-6 max-w-3xl">
-            <h1
-              className="text-5xl leading-[0.95] text-stone-950 md:text-6xl"
-              style={{
-                fontFamily:
-                  '"Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif',
-              }}
-            >
-              Lire le business avant d’ouvrir les détails.
-            </h1>
-            <p className="mt-5 max-w-2xl text-base leading-7 text-stone-600">
-              Ce dashboard s’appuie uniquement sur les données Supabase validées en
-              phase 1. Il montre la santé du pipeline, la traction des produits et
-              la fraîcheur des syncs, sans mélanger encore les coûts financiers à
-              venir.
-            </p>
-          </div>
+      {/* Page title */}
+      <div>
+        <p style={eyebrow}>Vue d'ensemble</p>
+        <h1 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 28, fontWeight: 500, color: "#111", letterSpacing: "-0.02em", lineHeight: 1.1 }}>
+          État du dataset
+        </h1>
+      </div>
 
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {data.heroMetrics.map((metric) => (
-              <HeroMetricCard key={metric.label} metric={metric} />
+      {/* Hero KPI row */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: 12 }}>
+        {[
+          { label: "Commandes totales", value: fmt(d.totalOrders), sub: "hors tests" },
+          { label: "Actives", value: fmt(d.activeOrders), sub: `${pct(d.activeOrders, d.totalOrders)} du total` },
+          { label: "Terminales", value: fmt(d.terminalOrders), sub: `${pct(d.terminalOrders, d.totalOrders)} du total` },
+          { label: "Livrées", value: fmt(d.deliveredOrders), sub: `${pct(d.deliveredOrders, d.totalOrders)} du total` },
+          { label: "Retournées", value: fmt(d.returnedOrders), sub: `${pct(d.returnedOrders, d.totalOrders)} du total` },
+          { label: "Produits", value: fmt(d.totalProducts), sub: "synced" },
+        ].map(({ label, value, sub }) => (
+          <div key={label} style={card}>
+            <p style={eyebrow}>{label}</p>
+            <p style={bigNumber}>{value}</p>
+            <p style={hint}>{sub}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Status repartition + sync summary */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 12 }}>
+
+        {/* Status breakdown */}
+        <div style={{ ...card, padding: "24px 28px" }}>
+          <p style={{ ...eyebrow, marginBottom: 20 }}>Répartition par statut</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {d.byStatus.map(({ label, count }) => (
+              <div key={label}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                  <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)" }}>{label}</span>
+                  <span style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 20, fontWeight: 500, color: "#fff", letterSpacing: "-0.01em" }}>
+                    {fmt(count)}
+                  </span>
+                </div>
+                <Bar value={count} max={maxStatus} />
+              </div>
             ))}
           </div>
         </div>
 
-        <aside className="space-y-6">
-          <SectionShell
-            eyebrow="Confiance données"
-            title="Fraîcheur"
-            body="Le dashboard reste global côté business, mais la confiance sync reste visible par boutique afin de savoir si les métriques sont exploitables."
-            className="h-full"
-          >
-            <div className="space-y-5">
-              <div className="rounded-[1.5rem] border border-black/8 bg-[#fffdf8] p-5">
-                <p className="text-[11px] uppercase tracking-[0.24em] text-stone-500">
-                  Dernier sync réussi
-                </p>
-                <p
-                  className="mt-3 text-3xl leading-none text-stone-950"
-                  style={{
-                    fontFamily:
-                      '"Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif',
-                  }}
-                >
-                  {formatDateTime(data.lastSuccessfulSyncAt)}
-                </p>
-                <p className="mt-3 text-sm leading-6 text-stone-600">
-                  {data.connectedStores} boutique(s) connectée(s) actuellement.
-                </p>
+        {/* Sync + stores */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ ...card, flex: 1 }}>
+            <p style={eyebrow}>Synchronisation</p>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10 }}>
+              <div style={{ width: 7, height: 7, borderRadius: "50%", background: syncTone.dot, flexShrink: 0 }} />
+              <span style={{ fontSize: 13, color: syncTone.text, fontWeight: 500 }}>
+                {d.syncFreshness === "stable" ? "Données fraîches" : d.syncFreshness === "watch" ? "À rafraîchir" : "Sync à sécuriser"}
+              </span>
+            </div>
+            <p style={{ ...hint, marginTop: 12 }}>Dernier sync : {formatSyncAge(d.lastSyncAt)}</p>
+          </div>
+
+          <div style={card}>
+            <p style={eyebrow}>Boutiques connectées</p>
+            <p style={{ ...bigNumber, fontSize: 28, marginTop: 8 }}>{fmt(d.connectedStores)}</p>
+            <p style={hint}>Source Converty active</p>
+          </div>
+
+          <div style={{ ...card, display: "flex", flexDirection: "column", gap: 10 }}>
+            <p style={eyebrow}>Actif / Terminal</p>
+            {[
+              { label: "Actives", count: d.activeOrders },
+              { label: "Terminales", count: d.terminalOrders },
+            ].map(({ label, count }) => (
+              <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>{label}</span>
+                <span style={{ fontSize: 14, fontWeight: 500, color: "#fff" }}>{fmt(count)}</span>
               </div>
-
-              <DashboardSyncActions />
-            </div>
-          </SectionShell>
-        </aside>
-      </section>
-
-      <section className="grid gap-8 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
-        <SectionShell
-          eyebrow="Pipeline"
-          title="Lecture rapide du flux commandes"
-          body="Les statuts clés donnent immédiatement la taille du backlog, la vitesse de progression et la tension retour."
-        >
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {data.pipeline.map((metric) => (
-              <PipelineCard
-                key={metric.status}
-                metric={metric}
-                maxCount={maxPipelineCount}
-              />
             ))}
-          </div>
-        </SectionShell>
-
-        <SectionShell
-          eyebrow="Alertes"
-          title="Ce qui mérite une réaction"
-          body="Une lecture synthétique des signaux opérationnels sans attendre la future couche financière."
-        >
-          <div className="space-y-4">
-            {data.alerts.map((alert) => (
-              <AlertCard key={alert.title} alert={alert} />
-            ))}
-          </div>
-        </SectionShell>
-      </section>
-
-      <section className="grid gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)]">
-        <SectionShell
-          eyebrow="Rythme"
-          title="Tendance des 14 derniers jours"
-          body="Chaque barre représente le revenu livré du jour. Le chiffre sous la barre indique le nombre total de commandes créées sur cette journée."
-        >
-          <TrendBars trend={data.trend} />
-        </SectionShell>
-
-        <SectionShell
-          eyebrow="Produits"
-          title="Les locomotives du livré"
-          body="Vue purement opérationnelle fondée sur les lignes de commandes livrées. Pas encore de marge, pas encore de COGS, seulement les volumes et le chiffre d'affaires livré."
-        >
-          {data.topProducts.length > 0 ? (
-            <div className="space-y-4">
-              {data.topProducts.map((product, index) => (
-                <TopProductCard
-                  key={`${product.name}-${index}`}
-                  product={product}
-                  index={index}
-                />
-              ))}
+            <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "2px 0" }} />
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ fontSize: 12, color: "rgba(255,255,255,0.25)" }}>Actives</span>
+              <span style={{ fontSize: 12, color: "rgba(255,255,255,0.25)" }}>{pct(d.activeOrders, d.totalOrders)}</span>
             </div>
-          ) : (
-            <div className="rounded-[1.5rem] border border-dashed border-black/10 bg-[#fffdf8] px-5 py-8 text-sm text-stone-600">
-              Aucun produit livré n’est encore exploitable pour cette vue.
-            </div>
-          )}
-        </SectionShell>
-      </section>
-
-      <section className="grid gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
-        <SectionShell
-          eyebrow="Boutiques"
-          title="Confiance par source"
-          body="Les tables business restent globales, mais le contrôle du flux amont reste lisible par boutique afin d’identifier immédiatement une source silencieuse ou défaillante."
-        >
-          <div className="grid gap-4 xl:grid-cols-2">
-            {data.stores.map((store) => (
-              <StoreSyncRow key={store.storeId} store={store} />
-            ))}
           </div>
-        </SectionShell>
-
-        <SectionShell
-          eyebrow="Suite"
-          title="Ce que ce dashboard n’essaie pas encore de faire"
-          body="Cette version reste volontairement sobre sur la finance. Les couches coûts, COGS, ROAS, overhead, cash et investisseurs doivent arriver avec les futures tables de settings versionnées."
-        >
-          <ul className="space-y-4 text-sm leading-6 text-stone-600">
-            <li className="rounded-[1.25rem] border border-black/8 bg-[#fffdf8] px-4 py-4">
-              Les métriques affichées ici reposent uniquement sur Converty + Supabase
-              et excluent les commandes de test.
-            </li>
-            <li className="rounded-[1.25rem] border border-black/8 bg-[#fffdf8] px-4 py-4">
-              Le taux de confirmation ignore les abandonnées et se limite à
-              confirmées vs rejetées.
-            </li>
-            <li className="rounded-[1.25rem] border border-black/8 bg-[#fffdf8] px-4 py-4">
-              Les chiffres financiers avancés seront ajoutés seulement après la
-              couche settings versionnée et les autres modules métier.
-            </li>
-          </ul>
-        </SectionShell>
-      </section>
+        </div>
+      </div>
     </div>
   );
 }
