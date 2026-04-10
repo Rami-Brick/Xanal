@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import { getSyncPageData } from "@/lib/data/sync";
 import { SyncActions } from "@/components/sync/SyncActions";
+import { StoreRefreshButton } from "@/components/sync/StoreRefreshButton";
 
 export const metadata: Metadata = { title: "Sync · Xanal" };
 export const dynamic = "force-dynamic";
@@ -59,6 +60,9 @@ export default async function SyncPage() {
         <h1 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 28, fontWeight: 500, color: "#111", letterSpacing: "-0.02em", lineHeight: 1.1 }}>
           Pipeline de données
         </h1>
+        <p style={{ fontSize: 12, color: "rgba(0,0,0,0.35)", marginTop: 6, lineHeight: 1.5 }}>
+          Rafraîchissement automatique si dernière sync &gt; 15 min · Badge <em>À rafraîchir</em> si sync par boutique &gt; 6 h
+        </p>
       </div>
 
       {/* Summary strip */}
@@ -130,6 +134,7 @@ export default async function SyncPage() {
                       {store.errorMessage}
                     </p>
                   )}
+                  <StoreRefreshButton storeId={store.storeId} tone={store.tone} />
                 </div>
               );
             })}

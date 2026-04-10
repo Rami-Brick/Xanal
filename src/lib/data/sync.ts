@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { STORE_WATCH_STALE_MS } from "@/lib/sync/constants";
 
 const PAGE_SIZE = 1000;
 
@@ -44,7 +45,6 @@ export interface SyncPageData {
   successRate: number;
 }
 
-const STALE_MS = 6 * 60 * 60 * 1000; // 6h
 
 function ageLabel(dateStr: string | null, now: Date): string {
   if (!dateStr) return "Jamais synchronisé";
@@ -114,7 +114,7 @@ export const getSyncPageData = cache(async (): Promise<SyncPageData> => {
 
     let tone: StoreHealth["tone"] = "stable";
     if (last?.status === "failed") tone = "risk";
-    else if (ageMs > STALE_MS) tone = "watch";
+    else if (ageMs > STORE_WATCH_STALE_MS) tone = "watch";
 
     return {
       storeId: token.store_id,
