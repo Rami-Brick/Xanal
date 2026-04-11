@@ -2,7 +2,7 @@ const DEFAULT_AUTHORIZATION_URL =
   "https://partner.converty.shop/oauth2/authorize";
 const DEFAULT_TOKEN_URL = "https://partner.converty.shop/oauth2/token";
 const DEFAULT_API_BASE_URL = "https://api.converty.shop/api/v1";
-const DEFAULT_SCOPES = "read-orders read-products read-stores";
+const DEFAULT_SCOPES = "read-products create-products update-products read-orders";
 
 export interface ConvertyConfig {
   clientId: string;
