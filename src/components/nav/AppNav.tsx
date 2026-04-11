@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { LogoutButton } from "@/components/auth/LogoutButton";
 
 const NAV_ITEMS = [
+  { href: "/store", label: "Ma boutique" },
   { href: "/dashboard", label: "Vue d'ensemble" },
   { href: "/orders", label: "Commandes" },
   { href: "/products", label: "Produits" },

@@ -36,13 +36,15 @@ Do not assume the app is still scaffold-only. Read the current codebase before m
 ## Source Of Truth Files
 
 Always read these before making major decisions:
-- `zResources/XANAL.md` for the long-term product and architecture direction
-- `zResources/CONVERTY.md` for the vendor OAuth/API reference
-- `zResources/PHASE1.md` for the current backend execution plan
+- `zResources/XANAL-STATUS.md` for the current project snapshot
+- `zResources/XANAL-ROADMAP.md` for the current product direction
 - `zResources/XANAL-CHATBOT-HANDOFF.md` for current implemented context
+- `zResources/PHASE1.md` for the validated backend execution plan
+- `zResources/CONVERTY-API-SUMMARY.md` for the vendor OAuth/API reference actually used in this repo
+- `DESIGN.md` for UI direction, visual language, and design constraints
 - `supabase/migrations/001_initial.sql` for the current database schema
 
-Treat `CONVERTY.md` as vendor documentation. Do not rewrite it unless explicitly asked.
+Historical notes may still exist under `zResources/old/`, but prefer the files above unless a task explicitly needs older planning context.
 
 ## Converty Integration Rules
 
@@ -102,6 +104,9 @@ Frontend expectations:
 - preserve performance and clean data flow
 - prefer server-driven data reads where possible
 - use French copy in the interface
+- reference `DESIGN.md` before making visual decisions
+- keep UI copy concise and operational; avoid long explanatory text blocks unless the task clearly needs them
+- for dashboards and store surfaces, favor clean, high-signal composition over verbose labels or helper copy
 
 ## Workflow Expectations
 
@@ -128,7 +133,8 @@ Near-term priorities should generally be:
 1. backend sync hardening and cleanup
 2. sync observability and status endpoints
 3. reliable incremental and backfill behavior
-4. dashboard and UI work after the backend contract is stable
+4. build the primary single-store `/store` surface as the default authenticated landing page
+5. keep legacy dashboard pages available as secondary surfaces
 
 Long-term direction:
 - Supabase should be the fast read layer

@@ -32,14 +32,14 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // Authenticated user on /login → redirect to /dashboard
+  // Authenticated user on /login → redirect to /store
   if (user && pathname === "/login") {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return NextResponse.redirect(new URL("/store", request.url));
   }
 
-  // Authenticated user on / → redirect to /dashboard
+  // Authenticated user on / → redirect to /store
   if (user && pathname === "/") {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return NextResponse.redirect(new URL("/store", request.url));
   }
 
   // Unauthenticated user on protected route → redirect to /login

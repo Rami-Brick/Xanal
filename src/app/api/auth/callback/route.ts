@@ -164,7 +164,7 @@ export async function GET(request: NextRequest) {
 
     const storeName = storeData.name || storeData.title || storeData.slug;
     return redirectWithStatus(
-      appUrl,
+      `${appUrl}/store`,
       "success",
       `Connexion a ${storeName} reussie.`
     );
