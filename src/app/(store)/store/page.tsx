@@ -6,7 +6,6 @@ import { StoreActions } from "@/components/store/StoreActions";
 export const metadata: Metadata = { title: "Ma boutique · Xanal" };
 export const dynamic = "force-dynamic";
 
-// ─── design tokens ─────────────────────────────────────────────────────────
 const YELLOW = "#F0B90B";
 const GREEN = "#0ECB81";
 const RED = "#F6465D";
@@ -44,12 +43,11 @@ const hint: React.CSSProperties = {
 };
 
 const FRESHNESS = {
-  stable: { dot: GREEN, label: "Données fraîches", glow: GREEN },
-  watch: { dot: "#fbbf24", label: "À rafraîchir", glow: "#fbbf24" },
+  stable: { dot: GREEN, label: "Donnees fraiches", glow: GREEN },
+  watch: { dot: "#fbbf24", label: "A rafraichir", glow: "#fbbf24" },
   risk: { dot: RED, label: "Sync requis", glow: RED },
 } as const;
 
-// ─── helpers ───────────────────────────────────────────────────────────────
 function fmt(n: number) {
   return new Intl.NumberFormat("fr-FR").format(n);
 }
@@ -60,10 +58,10 @@ function pct(n: number, total: number) {
 }
 
 function formatSyncAge(dateStr: string | null): string {
-  if (!dateStr) return "Jamais synchronisé";
+  if (!dateStr) return "Jamais synchronise";
   const ms = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(ms / 60000);
-  if (mins < 1) return "À l'instant";
+  if (mins < 1) return "A l'instant";
   if (mins < 60) return `Il y a ${mins} min`;
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `Il y a ${hrs} h`;
@@ -102,7 +100,6 @@ function Bar({
   );
 }
 
-// ─── page ──────────────────────────────────────────────────────────────────
 export default async function StorePage() {
   const d = await getStorePageData();
   const freshness = FRESHNESS[d.connection.syncFreshness];
@@ -110,7 +107,6 @@ export default async function StorePage() {
 
   return (
     <>
-      {/* ── Top bar ── */}
       <header
         style={{
           position: "sticky",
@@ -131,7 +127,6 @@ export default async function StorePage() {
             justifyContent: "space-between",
           }}
         >
-          {/* Brand */}
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div
               style={{
@@ -163,7 +158,6 @@ export default async function StorePage() {
             </span>
           </div>
 
-          {/* Legacy escape */}
           <Link
             href="/dashboard"
             style={{
@@ -184,7 +178,6 @@ export default async function StorePage() {
         </div>
       </header>
 
-      {/* ── Main content ── */}
       <main
         style={{
           maxWidth: 1200,
@@ -195,7 +188,6 @@ export default async function StorePage() {
           gap: 48,
         }}
       >
-        {/* ── Hero / identity ── */}
         <div
           style={{
             display: "flex",
@@ -216,7 +208,7 @@ export default async function StorePage() {
                 marginBottom: 12,
               }}
             >
-              Boutique connectée
+              Boutique connectee
             </p>
             <h1
               style={{
@@ -229,10 +221,9 @@ export default async function StorePage() {
                 marginBottom: 18,
               }}
             >
-              {d.connection.storeId ?? "Non configurée"}
+              {d.connection.storeId ?? "Non configuree"}
             </h1>
 
-            {/* Health strip */}
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div
                 style={{
@@ -244,9 +235,7 @@ export default async function StorePage() {
                   flexShrink: 0,
                 }}
               />
-              <span
-                style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", fontWeight: 400 }}
-              >
+              <span style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", fontWeight: 400 }}>
                 {freshness.label}
               </span>
               <span style={{ fontSize: 13, color: "rgba(255,255,255,0.15)" }}>·</span>
@@ -256,7 +245,6 @@ export default async function StorePage() {
             </div>
           </div>
 
-          {/* Disconnected state CTA */}
           {!d.connection.connected && (
             <div
               style={{
@@ -277,7 +265,7 @@ export default async function StorePage() {
                   opacity: 0.8,
                 }}
               >
-                Aucune boutique connectée
+                Aucune boutique connectee
               </p>
               <a
                 href="/api/auth/converty/start"
@@ -299,7 +287,6 @@ export default async function StorePage() {
           )}
         </div>
 
-        {/* ── KPI grid ── */}
         <section>
           <p style={eyebrow}>Vue d&apos;ensemble</p>
           <div
@@ -312,39 +299,45 @@ export default async function StorePage() {
             {(
               [
                 {
-                  label: "Commandes",
-                  value: fmt(d.kpis.totalOrders),
+                  label: "Commandes en base",
+                  value: fmt(d.kpis.totalDatabaseOrders),
                   sub: "hors tests",
                   accent: undefined,
                 },
                 {
+                  label: "Commandes valides",
+                  value: fmt(d.kpis.validOrders),
+                  sub: "hors supprimees",
+                  accent: YELLOW,
+                },
+                {
                   label: "Actives",
                   value: fmt(d.kpis.activeOrders),
-                  sub: pct(d.kpis.activeOrders, d.kpis.totalOrders) + " du total",
+                  sub: pct(d.kpis.activeOrders, d.kpis.validOrders) + " des valides",
                   accent: undefined,
                 },
                 {
                   label: "Terminales",
                   value: fmt(d.kpis.terminalOrders),
-                  sub: pct(d.kpis.terminalOrders, d.kpis.totalOrders) + " du total",
+                  sub: pct(d.kpis.terminalOrders, d.kpis.validOrders) + " des valides",
                   accent: undefined,
                 },
                 {
-                  label: "Livrées",
+                  label: "Livrees",
                   value: fmt(d.kpis.deliveredOrders),
-                  sub: pct(d.kpis.deliveredOrders, d.kpis.totalOrders) + " du total",
+                  sub: pct(d.kpis.deliveredOrders, d.kpis.validOrders) + " des valides",
                   accent: GREEN,
                 },
                 {
-                  label: "Retournées",
+                  label: "Retournees",
                   value: fmt(d.kpis.returnedOrders),
-                  sub: pct(d.kpis.returnedOrders, d.kpis.totalOrders) + " du total",
+                  sub: pct(d.kpis.returnedOrders, d.kpis.validOrders) + " des valides",
                   accent: RED,
                 },
                 {
-                  label: "Rejetées",
+                  label: "Rejetees",
                   value: fmt(d.kpis.rejectedOrders),
-                  sub: pct(d.kpis.rejectedOrders, d.kpis.totalOrders) + " du total",
+                  sub: pct(d.kpis.rejectedOrders, d.kpis.validOrders) + " des valides",
                   accent: undefined,
                 },
                 {
@@ -370,7 +363,6 @@ export default async function StorePage() {
           </div>
         </section>
 
-        {/* ── Order breakdown ── */}
         <section>
           <p style={eyebrow}>Commandes</p>
           <div
@@ -380,7 +372,6 @@ export default async function StorePage() {
               gap: 10,
             }}
           >
-            {/* Status bars */}
             <div style={{ ...card, padding: "24px 26px" }}>
               <p
                 style={{
@@ -391,7 +382,7 @@ export default async function StorePage() {
                   letterSpacing: "0.04em",
                 }}
               >
-                Répartition par statut
+                Repartition par statut
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
                 {d.orderBreakdown.byStatus.map(({ label, count }) => (
@@ -424,9 +415,7 @@ export default async function StorePage() {
               </div>
             </div>
 
-            {/* Split panels */}
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {/* Actif vs Terminal */}
               <div style={{ ...card, flex: 1 }}>
                 <p style={eyebrow}>Actif / Terminal</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -481,79 +470,72 @@ export default async function StorePage() {
                 </div>
               </div>
 
-              {/* Livré / Retourné / Rejeté */}
               <div style={{ ...card, flex: 1 }}>
-                <p style={eyebrow}>Résultats terminaux</p>
+                <p style={eyebrow}>Resultats terminaux</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                  {d.orderBreakdown.deliveredVsReturnedVsRejected.map(
-                    ({ label, count, pct: p }) => {
-                      const barColor =
-                        label === "Livrées"
-                          ? GREEN
-                          : label === "Rejetées"
+                  {d.orderBreakdown.deliveredVsReturnedVsRejected.map(({ label, count, pct: p }) => {
+                    const barColor =
+                      label === "LivrÃ©es"
+                        ? GREEN
+                        : label === "RejetÃ©es"
                           ? RED
                           : "rgba(255,255,255,0.22)";
-                      return (
-                        <div key={label}>
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "baseline",
-                            }}
-                          >
+
+                    return (
+                      <div key={label}>
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "baseline",
+                          }}
+                        >
+                          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.45)" }}>
+                            {label}
+                          </span>
+                          <div style={{ display: "flex", alignItems: "baseline", gap: 7 }}>
                             <span
-                              style={{ fontSize: 13, color: "rgba(255,255,255,0.45)" }}
-                            >
-                              {label}
-                            </span>
-                            <div style={{ display: "flex", alignItems: "baseline", gap: 7 }}>
-                              <span
-                                style={{
-                                  fontFamily: "var(--font-geist-mono), 'Geist Mono', monospace",
-                                  fontSize: 22,
-                                  fontWeight: 500,
-                                  color: "#fff",
-                                }}
-                              >
-                                {fmt(count)}
-                              </span>
-                              <span
-                                style={{ fontSize: 10, color: "rgba(255,255,255,0.22)" }}
-                              >
-                                {Math.round(p)} %
-                              </span>
-                            </div>
-                          </div>
-                          <div
-                            style={{
-                              height: 2,
-                              background: "rgba(255,255,255,0.07)",
-                              borderRadius: 99,
-                              marginTop: 9,
-                              overflow: "hidden",
-                            }}
-                          >
-                            <div
                               style={{
-                                height: "100%",
-                                width: `${p}%`,
-                                background: barColor,
-                                borderRadius: 99,
+                                fontFamily: "var(--font-geist-mono), 'Geist Mono', monospace",
+                                fontSize: 22,
+                                fontWeight: 500,
+                                color: "#fff",
                               }}
-                            />
+                            >
+                              {fmt(count)}
+                            </span>
+                            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.22)" }}>
+                              {Math.round(p)} %
+                            </span>
                           </div>
                         </div>
-                      );
-                    }
-                  )}
+                        <div
+                          style={{
+                            height: 2,
+                            background: "rgba(255,255,255,0.07)",
+                            borderRadius: 99,
+                            marginTop: 9,
+                            overflow: "hidden",
+                          }}
+                        >
+                          <div
+                            style={{
+                              height: "100%",
+                              width: `${p}%`,
+                              background: barColor,
+                              borderRadius: 99,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* ── Product breakdown ── */}
         <section>
           <p style={eyebrow}>Produits</p>
           <div
@@ -563,22 +545,24 @@ export default async function StorePage() {
               gap: 10,
             }}
           >
-            {/* Top by total orders */}
             <div style={{ ...card, padding: "24px 26px" }}>
               <p
                 style={{
                   fontSize: 11,
                   fontWeight: 500,
                   color: "rgba(255,255,255,0.35)",
-                  marginBottom: 22,
+                  marginBottom: 8,
                   letterSpacing: "0.04em",
                 }}
               >
                 Volume de commandes
               </p>
+              <p style={{ fontSize: 11, color: "rgba(255,255,255,0.18)", marginBottom: 18 }}>
+                Commandes valides hors supprimees
+              </p>
               {d.productBreakdown.topByTotalOrders.length === 0 ? (
                 <p style={{ fontSize: 12, color: "rgba(255,255,255,0.18)" }}>
-                  Aucune donnée disponible
+                  Aucune donnee disponible
                 </p>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -630,22 +614,24 @@ export default async function StorePage() {
               )}
             </div>
 
-            {/* Top by delivered orders */}
             <div style={{ ...card, padding: "24px 26px" }}>
               <p
                 style={{
                   fontSize: 11,
                   fontWeight: 500,
                   color: "rgba(255,255,255,0.35)",
-                  marginBottom: 22,
+                  marginBottom: 8,
                   letterSpacing: "0.04em",
                 }}
               >
-                <span style={{ color: GREEN }}>● </span>Livraisons confirmées
+                <span style={{ color: GREEN }}>● </span>Livraisons confirmees
+              </p>
+              <p style={{ fontSize: 11, color: "rgba(255,255,255,0.18)", marginBottom: 18 }}>
+                Base uniquement sur les commandes valides livrees
               </p>
               {d.productBreakdown.topByDeliveredOrders.length === 0 ? (
                 <p style={{ fontSize: 12, color: "rgba(255,255,255,0.18)" }}>
-                  Aucune donnée disponible
+                  Aucune donnee disponible
                 </p>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -699,7 +685,6 @@ export default async function StorePage() {
           </div>
         </section>
 
-        {/* ── Actions ── */}
         <section>
           <p style={eyebrow}>Actions</p>
           <StoreActions connected={d.connection.connected} />

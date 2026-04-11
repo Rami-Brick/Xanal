@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import { getProductsPageData } from "@/lib/data/products";
 
-export const metadata: Metadata = { title: "Produits · Xanal" };
+export const metadata: Metadata = { title: "Produits Â· Xanal" };
 export const dynamic = "force-dynamic";
 
 const card: React.CSSProperties = {
@@ -137,7 +137,7 @@ export default async function ProductsPage() {
         <div style={card}>
           <p style={eyebrow}>Avec livraisons</p>
           <p style={bigNumber}>{fmt(d.byDeliveredOrders.filter((p) => p.deliveredOrders > 0).length)}</p>
-          <p style={hint}>au moins 1 livrée</p>
+          <p style={hint}>au moins 1 livrÃ©e</p>
         </div>
       </div>
 
@@ -147,7 +147,7 @@ export default async function ProductsPage() {
         {/* By total orders */}
         <div style={{ ...card, padding: "24px 28px" }}>
           <p style={{ ...eyebrow, marginBottom: 4 }}>Par commandes totales</p>
-          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.2)", marginBottom: 16 }}>Toutes commandes réelles confondues</p>
+          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.2)", marginBottom: 16 }}>Toutes commandes rÃ©elles confondues</p>
           <div>
             {d.byTotalOrders.map((p, i) => (
               <ProductRow
@@ -157,21 +157,21 @@ export default async function ProductsPage() {
                 primary={p.totalOrders}
                 secondary={p.totalUnits}
                 primaryLabel="commandes"
-                secondaryLabel="unités"
+                secondaryLabel="unitÃ©s"
                 barValue={p.totalOrders}
                 barMax={maxTotal}
               />
             ))}
             {d.byTotalOrders.length === 0 && (
-              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.25)", paddingTop: 12 }}>Aucune donnée</p>
+              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.25)", paddingTop: 12 }}>Aucune donnÃ©e</p>
             )}
           </div>
         </div>
 
         {/* By delivered orders */}
         <div style={{ ...card, padding: "24px 28px" }}>
-          <p style={{ ...eyebrow, marginBottom: 4 }}>Par commandes livrées</p>
-          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.2)", marginBottom: 16 }}>Uniquement les commandes avec statut livré</p>
+          <p style={{ ...eyebrow, marginBottom: 4 }}>Par commandes livrÃ©es</p>
+          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.2)", marginBottom: 16 }}>Uniquement les commandes avec statut livrÃ©</p>
           <div>
             {d.byDeliveredOrders.map((p, i) => (
               <ProductRow
@@ -180,14 +180,14 @@ export default async function ProductsPage() {
                 name={p.name}
                 primary={p.deliveredOrders}
                 secondary={p.deliveredUnits}
-                primaryLabel="livrées"
-                secondaryLabel="unités livrées"
+                primaryLabel="livrÃ©es"
+                secondaryLabel="unitÃ©s livrÃ©es"
                 barValue={p.deliveredOrders}
                 barMax={maxDelivered}
               />
             ))}
             {d.byDeliveredOrders.length === 0 && (
-              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.25)", paddingTop: 12 }}>Aucune donnée</p>
+              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.25)", paddingTop: 12 }}>Aucune donnÃ©e</p>
             )}
           </div>
         </div>

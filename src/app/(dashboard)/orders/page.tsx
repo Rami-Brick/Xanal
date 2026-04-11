@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import { getOrdersPageData } from "@/lib/data/orders";
 
-export const metadata: Metadata = { title: "Commandes · Xanal" };
+export const metadata: Metadata = { title: "Commandes Â· Xanal" };
 export const dynamic = "force-dynamic";
 
 const card: React.CSSProperties = {
@@ -81,11 +81,11 @@ export default async function OrdersPage() {
         {[
           { label: "Total", value: fmt(d.totalOrders), sub: "hors tests" },
           { label: "Actives", value: fmt(d.activeOrders), sub: "pipeline en cours" },
-          { label: "Terminales", value: fmt(d.terminalOrders), sub: "livrées / retournées / rejetées" },
+          { label: "Terminales", value: fmt(d.terminalOrders), sub: "livrÃ©es / retournÃ©es / rejetÃ©es" },
           {
             label: "Taux terminal",
-            value: d.totalOrders > 0 ? `${Math.round((d.terminalOrders / d.totalOrders) * 100)} %` : "—",
-            sub: "commandes résolues",
+            value: d.totalOrders > 0 ? `${Math.round((d.terminalOrders / d.totalOrders) * 100)} %` : "â€”",
+            sub: "commandes rÃ©solues",
           },
         ].map(({ label, value, sub }) => (
           <div key={label} style={card}>
@@ -101,7 +101,7 @@ export default async function OrdersPage() {
 
         {/* Status breakdown */}
         <div style={{ ...card, padding: "24px 28px" }}>
-          <p style={{ ...eyebrow, marginBottom: 20 }}>Répartition par statut</p>
+          <p style={{ ...eyebrow, marginBottom: 20 }}>RÃ©partition par statut</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             {d.byStatus.map(({ label, count }) => (
               <div key={label}>
@@ -141,7 +141,7 @@ export default async function OrdersPage() {
 
           {/* Delivered / returned / rejected */}
           <div style={{ ...card, padding: "24px 28px" }}>
-            <p style={{ ...eyebrow, marginBottom: 16 }}>Livré / Retourné / Rejeté</p>
+            <p style={{ ...eyebrow, marginBottom: 16 }}>LivrÃ© / RetournÃ© / RejetÃ©</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {d.deliveredVsReturnedVsRejected.map(({ label, count, pct }) => (
                 <div key={label}>
@@ -152,7 +152,7 @@ export default async function OrdersPage() {
                       <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>{Math.round(pct)} %</span>
                     </div>
                   </div>
-                  <Bar value={count} max={drrMax} accent={label === "Livrées"} />
+                  <Bar value={count} max={drrMax} accent={label === "LivrÃ©es"} />
                 </div>
               ))}
             </div>

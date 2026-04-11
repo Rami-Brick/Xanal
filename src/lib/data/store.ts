@@ -48,6 +48,10 @@ function ns(s: string | null | undefined): string {
   return (s ?? "").trim().toLowerCase().replace(/_/g, " ");
 }
 
+function isValidOrderForAnalytics(order: OrderRow) {
+  return !order.is_test && ns(order.status) !== "deleted";
+}
+
 const STATUS_LABELS: Record<string, string> = {
   pending: "En attente",
   confirmed: "Confirmées",
@@ -66,6 +70,8 @@ export interface StorePageData {
     syncFreshness: "stable" | "watch" | "risk";
   };
   kpis: {
+    totalDatabaseOrders: number;
+    validOrders: number;
     totalOrders: number;
     activeOrders: number;
     terminalOrders: number;
@@ -133,7 +139,8 @@ export const getStorePageData = cache(async (): Promise<StorePageData> => {
     : "stable";
 
   // Order metrics
-  const real = orders.filter((o) => !o.is_test);
+  const databaseOrders = orders.filter((o) => !o.is_test);
+  const real = orders.filter(isValidOrderForAnalytics);
   const active = real.filter((o) => !isTerminalOrder(ns(o.status), o.history, now));
   const terminal = real.filter((o) => isTerminalOrder(ns(o.status), o.history, now));
   const delivered = real.filter((o) => ns(o.status) === "delivered");
@@ -238,6 +245,8 @@ export const getStorePageData = cache(async (): Promise<StorePageData> => {
   return {
     connection: { storeId, connected, lastSyncAt, syncFreshness },
     kpis: {
+      totalDatabaseOrders: databaseOrders.length,
+      validOrders: real.length,
       totalOrders: real.length,
       activeOrders: active.length,
       terminalOrders: terminal.length,

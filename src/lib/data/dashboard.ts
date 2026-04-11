@@ -36,12 +36,12 @@ async function fetchAll<T>(table: string, cols: string, orderCol = "id"): Promis
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "En attente",
-  confirmed: "Confirmées",
-  deposit: "Déposées",
+  confirmed: "ConfirmÃ©es",
+  deposit: "DÃ©posÃ©es",
   "in transit": "En transit",
-  delivered: "Livrées",
-  returned: "Retournées",
-  rejected: "Rejetées",
+  delivered: "LivrÃ©es",
+  returned: "RetournÃ©es",
+  rejected: "RejetÃ©es",
 };
 
 export interface DashboardOverviewData {

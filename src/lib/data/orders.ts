@@ -52,13 +52,13 @@ export interface OrdersPageData {
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "En attente",
-  confirmed: "Confirmées",
-  deposit: "Déposées",
+  confirmed: "ConfirmÃ©es",
+  deposit: "DÃ©posÃ©es",
   "in transit": "En transit",
-  delivered: "Livrées",
-  returned: "Retournées",
-  rejected: "Rejetées",
-  cancelled: "Annulées",
+  delivered: "LivrÃ©es",
+  returned: "RetournÃ©es",
+  rejected: "RejetÃ©es",
+  cancelled: "AnnulÃ©es",
 };
 
 const TRACKED_STATUSES = [
@@ -94,7 +94,7 @@ export const getOrdersPageData = cache(async (): Promise<OrdersPageData> => {
   // Delivery company distribution
   const companyMap = new Map<string, number>();
   for (const o of real) {
-    const c = o.delivery_company?.trim() || "Non renseigné";
+    const c = o.delivery_company?.trim() || "Non renseignÃ©";
     companyMap.set(c, (companyMap.get(c) ?? 0) + 1);
   }
   const byDeliveryCompany = Array.from(companyMap.entries())
@@ -113,9 +113,9 @@ export const getOrdersPageData = cache(async (): Promise<OrdersPageData> => {
   const rejected = real.filter((o) => normalizeStatus(o.status) === "rejected").length;
   const drrTotal = delivered + returned + rejected;
   const deliveredVsReturnedVsRejected = [
-    { label: "Livrées", count: delivered, pct: drrTotal > 0 ? (delivered / drrTotal) * 100 : 0 },
-    { label: "Retournées", count: returned, pct: drrTotal > 0 ? (returned / drrTotal) * 100 : 0 },
-    { label: "Rejetées", count: rejected, pct: drrTotal > 0 ? (rejected / drrTotal) * 100 : 0 },
+    { label: "LivrÃ©es", count: delivered, pct: drrTotal > 0 ? (delivered / drrTotal) * 100 : 0 },
+    { label: "RetournÃ©es", count: returned, pct: drrTotal > 0 ? (returned / drrTotal) * 100 : 0 },
+    { label: "RejetÃ©es", count: rejected, pct: drrTotal > 0 ? (rejected / drrTotal) * 100 : 0 },
   ];
 
   return {

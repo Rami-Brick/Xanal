@@ -1,10 +1,10 @@
 import { Metadata } from "next";
 import { getDashboardOverview } from "@/lib/data/dashboard";
 
-export const metadata: Metadata = { title: "Vue d'ensemble · Xanal" };
+export const metadata: Metadata = { title: "Vue d'ensemble Â· Xanal" };
 export const dynamic = "force-dynamic";
 
-// ─── design tokens ────────────────────────────────────────────────────────────
+// â”€â”€â”€ design tokens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const card: React.CSSProperties = {
   background: "#141414",
   border: "1px solid rgba(255,255,255,0.07)",
@@ -84,7 +84,7 @@ export default async function DashboardPage() {
       <div>
         <p style={eyebrow}>Vue d'ensemble</p>
         <h1 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 28, fontWeight: 500, color: "#111", letterSpacing: "-0.02em", lineHeight: 1.1 }}>
-          État du dataset
+          Ã‰tat du dataset
         </h1>
       </div>
 
@@ -94,8 +94,8 @@ export default async function DashboardPage() {
           { label: "Commandes totales", value: fmt(d.totalOrders), sub: "hors tests" },
           { label: "Actives", value: fmt(d.activeOrders), sub: `${pct(d.activeOrders, d.totalOrders)} du total` },
           { label: "Terminales", value: fmt(d.terminalOrders), sub: `${pct(d.terminalOrders, d.totalOrders)} du total` },
-          { label: "Livrées", value: fmt(d.deliveredOrders), sub: `${pct(d.deliveredOrders, d.totalOrders)} du total` },
-          { label: "Retournées", value: fmt(d.returnedOrders), sub: `${pct(d.returnedOrders, d.totalOrders)} du total` },
+          { label: "LivrÃ©es", value: fmt(d.deliveredOrders), sub: `${pct(d.deliveredOrders, d.totalOrders)} du total` },
+          { label: "RetournÃ©es", value: fmt(d.returnedOrders), sub: `${pct(d.returnedOrders, d.totalOrders)} du total` },
           { label: "Produits", value: fmt(d.totalProducts), sub: "synced" },
         ].map(({ label, value, sub }) => (
           <div key={label} style={card}>
@@ -111,7 +111,7 @@ export default async function DashboardPage() {
 
         {/* Status breakdown */}
         <div style={{ ...card, padding: "24px 28px" }}>
-          <p style={{ ...eyebrow, marginBottom: 20 }}>Répartition par statut</p>
+          <p style={{ ...eyebrow, marginBottom: 20 }}>RÃ©partition par statut</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             {d.byStatus.map(({ label, count }) => (
               <div key={label}>
@@ -134,14 +134,14 @@ export default async function DashboardPage() {
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10 }}>
               <div style={{ width: 7, height: 7, borderRadius: "50%", background: syncTone.dot, flexShrink: 0 }} />
               <span style={{ fontSize: 13, color: syncTone.text, fontWeight: 500 }}>
-                {d.syncFreshness === "stable" ? "Données fraîches" : d.syncFreshness === "watch" ? "À rafraîchir" : "Sync à sécuriser"}
+                {d.syncFreshness === "stable" ? "DonnÃ©es fraÃ®ches" : d.syncFreshness === "watch" ? "Ã€ rafraÃ®chir" : "Sync Ã  sÃ©curiser"}
               </span>
             </div>
             <p style={{ ...hint, marginTop: 12 }}>Dernier sync : {formatSyncAge(d.lastSyncAt)}</p>
           </div>
 
           <div style={card}>
-            <p style={eyebrow}>Boutiques connectées</p>
+            <p style={eyebrow}>Boutiques connectÃ©es</p>
             <p style={{ ...bigNumber, fontSize: 28, marginTop: 8 }}>{fmt(d.connectedStores)}</p>
             <p style={hint}>Source Converty active</p>
           </div>
