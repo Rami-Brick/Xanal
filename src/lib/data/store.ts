@@ -9,6 +9,8 @@ interface OrderRow {
   status: string | null;
   is_test: boolean | null;
   history: unknown;
+  total_price: number | string | null;
+  converty_created_at: string | null;
 }
 
 interface ProductRow {
@@ -23,6 +25,7 @@ interface OrderItemRow {
   product_id: string | null;
   product_name: string;
   quantity: number | null;
+  price_per_unit: number | string | null;
 }
 
 async function fetchAll<T>(table: string, cols: string, orderCol = "id"): Promise<T[]> {
@@ -52,6 +55,15 @@ function isValidOrderForAnalytics(order: OrderRow) {
   return !order.is_test && ns(order.status) !== "deleted";
 }
 
+const RETURN_ELIGIBLE_STATUSES = new Set([
+  "deposit",
+  "in transit",
+  "delivered",
+  "returned",
+  "to be returned",
+]);
+const RETURN_NUMERATOR_STATUSES = new Set(["returned", "to be returned"]);
+
 const STATUS_LABELS: Record<string, string> = {
   pending: "En attente",
   confirmed: "Confirmées",
@@ -62,12 +74,14 @@ const STATUS_LABELS: Record<string, string> = {
   rejected: "Rejetées",
 };
 
+type Tone = "stable" | "watch" | "risk";
+
 export interface StorePageData {
   connection: {
     storeId: string | null;
     connected: boolean;
     lastSyncAt: string | null;
-    syncFreshness: "stable" | "watch" | "risk";
+    syncFreshness: Tone;
   };
   kpis: {
     totalDatabaseOrders: number;
@@ -81,6 +95,28 @@ export interface StorePageData {
     totalProducts: number;
     activeProducts: number;
   };
+  revenueMetrics: {
+    grossRevenue: number;
+    averageOrderValue: number;
+    returnRate: number;
+    confirmationRate: number;
+    returnNumerator: number;
+    returnDenominator: number;
+    confirmationNumerator: number;
+    confirmationDenominator: number;
+  };
+  dailyTrend: {
+    date: string;
+    label: string;
+    orders: number;
+    deliveredOrders: number;
+    deliveredRevenue: number;
+  }[];
+  alerts: {
+    title: string;
+    body: string;
+    tone: Tone;
+  }[];
   orderBreakdown: {
     byStatus: { status: string; label: string; count: number }[];
     activeVsTerminal: { label: string; count: number; pct: number }[];
@@ -101,6 +137,14 @@ export interface StorePageData {
       deliveredOrders: number;
       deliveredUnits: number;
     }[];
+    topByDeliveredRevenue: {
+      productId: string;
+      name: string;
+      imageUrl: string | null;
+      deliveredRevenue: number;
+      deliveredUnits: number;
+      revenueShare: number;
+    }[];
   };
 }
 
@@ -109,9 +153,9 @@ export const getStorePageData = cache(async (): Promise<StorePageData> => {
   const now = new Date();
 
   const [orders, products, orderItems, tokenResult, lastSyncResult] = await Promise.all([
-    fetchAll<OrderRow>("orders", "id, status, is_test, history", "id"),
+    fetchAll<OrderRow>("orders", "id, status, is_test, history, total_price, converty_created_at", "id"),
     fetchAll<ProductRow>("products", "id, name, status, image_url", "id"),
-    fetchAll<OrderItemRow>("order_items", "order_id, product_id, product_name, quantity", "id"),
+    fetchAll<OrderItemRow>("order_items", "order_id, product_id, product_name, quantity, price_per_unit", "id"),
     supabase
       .from("converty_tokens")
       .select("store_id")
@@ -176,6 +220,121 @@ export const getStorePageData = cache(async (): Promise<StorePageData> => {
   const totalProducts = products.length;
   const activeProducts = products.filter((p) => (p.status ?? "active") === "active").length;
 
+  // Revenue metrics
+  const grossRevenue = delivered.reduce(
+    (sum, o) => sum + Number(o.total_price ?? 0),
+    0
+  );
+  const averageOrderValue =
+    delivered.length > 0 ? grossRevenue / delivered.length : 0;
+
+  // Return rate: (returned + to_be_returned) / (deposit + in_transit + delivered + returned + to_be_returned)
+  const returnNumerator = real.filter((o) =>
+    RETURN_NUMERATOR_STATUSES.has(ns(o.status))
+  ).length;
+  const returnDenominator = real.filter((o) =>
+    RETURN_ELIGIBLE_STATUSES.has(ns(o.status))
+  ).length;
+  const returnRate =
+    returnDenominator > 0 ? (returnNumerator / returnDenominator) * 100 : 0;
+
+  // Confirmation rate: confirmed / (confirmed + rejected)
+  const confirmationNumerator = real.filter(
+    (o) => ns(o.status) === "confirmed"
+  ).length;
+  const confirmationDenominator = real.filter((o) => {
+    const s = ns(o.status);
+    return s === "confirmed" || s === "rejected";
+  }).length;
+  const confirmationRate =
+    confirmationDenominator > 0
+      ? (confirmationNumerator / confirmationDenominator) * 100
+      : 0;
+
+  // Daily trend (last 30 days — client filters to 7/14/30)
+  const trendDays = Array.from({ length: 30 }, (_, i) => {
+    const date = new Date(now);
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() - (29 - i));
+    return date;
+  });
+  const trendBuckets = new Map<
+    string,
+    { date: string; label: string; orders: number; deliveredOrders: number; deliveredRevenue: number }
+  >();
+  for (const date of trendDays) {
+    const iso = date.toISOString().slice(0, 10);
+    trendBuckets.set(iso, {
+      date: iso,
+      label: new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "short" }).format(date),
+      orders: 0,
+      deliveredOrders: 0,
+      deliveredRevenue: 0,
+    });
+  }
+  for (const o of real) {
+    if (!o.converty_created_at) continue;
+    const bucket = trendBuckets.get(o.converty_created_at.slice(0, 10));
+    if (!bucket) continue;
+    bucket.orders += 1;
+    if (ns(o.status) === "delivered") {
+      bucket.deliveredOrders += 1;
+      bucket.deliveredRevenue += Number(o.total_price ?? 0);
+    }
+  }
+  const dailyTrend = Array.from(trendBuckets.values());
+
+  // Alerts
+  const alerts: StorePageData["alerts"] = [];
+  if (lastSyncFailed) {
+    alerts.push({
+      title: "Synchronisation en echec",
+      body: "Le dernier sync a echoue. Les donnees affichees peuvent etre incompletes.",
+      tone: "risk",
+    });
+  } else if (syncFreshness === "watch") {
+    alerts.push({
+      title: "Donnees pas totalement fraiches",
+      body: "Le dernier sync date de plus de 6 heures. Pensez a relancer une synchronisation.",
+      tone: "watch",
+    });
+  }
+  if (returnRate >= 20) {
+    alerts.push({
+      title: "Taux de retour critique",
+      body: `Le taux de retour atteint ${returnRate.toFixed(1)} %. Revoir par produit et par ville.`,
+      tone: "risk",
+    });
+  } else if (returnRate >= 15) {
+    alerts.push({
+      title: "Taux de retour a surveiller",
+      body: `Le taux de retour est a ${returnRate.toFixed(1)} %. Seuil d'alerte proche.`,
+      tone: "watch",
+    });
+  }
+  if (confirmationRate > 0 && confirmationRate < 72) {
+    alerts.push({
+      title: "Confirmation fragile",
+      body: `Le taux de confirmation est a ${confirmationRate.toFixed(1)} %. Verifier le process de confirmation.`,
+      tone: confirmationRate < 60 ? "risk" : "watch",
+    });
+  }
+  if (active.length > Math.max(delivered.length, 1)) {
+    alerts.push({
+      title: "Backlog actif consequent",
+      body: `${active.length} commandes actives, soit plus que le volume livre. Priorite a la conversion du pipeline.`,
+      tone: "watch",
+    });
+  }
+  if (alerts.length === 0) {
+    alerts.push({
+      title: "Situation stable",
+      body: "Aucune anomalie operationnelle evidente sur les metriques de base.",
+      tone: "stable",
+    });
+  }
+
+  // Product metrics
   const realOrderIds = new Set(real.map((o) => o.id));
   const deliveredOrderIds = new Set(delivered.map((o) => o.id));
   const productById = new Map(products.map((p) => [p.id, p]));
@@ -188,6 +347,7 @@ export const getStorePageData = cache(async (): Promise<StorePageData> => {
     totalUnits: number;
     deliveredOrders: number;
     deliveredUnits: number;
+    deliveredRevenue: number;
   }
 
   const agg = new Map<string, ProductAgg>();
@@ -198,6 +358,7 @@ export const getStorePageData = cache(async (): Promise<StorePageData> => {
     const name = product?.name ?? item.product_name;
     const qty = Number(item.quantity ?? 0);
     const isDelivered = deliveredOrderIds.has(item.order_id);
+    const revenue = isDelivered ? qty * Number(item.price_per_unit ?? 0) : 0;
 
     const existing = agg.get(key);
     if (existing) {
@@ -206,6 +367,7 @@ export const getStorePageData = cache(async (): Promise<StorePageData> => {
       if (isDelivered) {
         existing.deliveredOrders += 1;
         existing.deliveredUnits += qty;
+        existing.deliveredRevenue += revenue;
       }
     } else {
       agg.set(key, {
@@ -216,6 +378,7 @@ export const getStorePageData = cache(async (): Promise<StorePageData> => {
         totalUnits: qty,
         deliveredOrders: isDelivered ? 1 : 0,
         deliveredUnits: isDelivered ? qty : 0,
+        deliveredRevenue: revenue,
       });
     }
   }
@@ -241,6 +404,17 @@ export const getStorePageData = cache(async (): Promise<StorePageData> => {
       deliveredOrders,
       deliveredUnits,
     }));
+  const topByDeliveredRevenue = [...allProducts]
+    .sort((a, b) => b.deliveredRevenue - a.deliveredRevenue)
+    .slice(0, 8)
+    .map(({ productId, name, imageUrl, deliveredRevenue, deliveredUnits }) => ({
+      productId,
+      name,
+      imageUrl,
+      deliveredRevenue,
+      deliveredUnits,
+      revenueShare: grossRevenue > 0 ? (deliveredRevenue / grossRevenue) * 100 : 0,
+    }));
 
   return {
     connection: { storeId, connected, lastSyncAt, syncFreshness },
@@ -256,7 +430,19 @@ export const getStorePageData = cache(async (): Promise<StorePageData> => {
       totalProducts,
       activeProducts,
     },
+    revenueMetrics: {
+      grossRevenue,
+      averageOrderValue,
+      returnRate,
+      confirmationRate,
+      returnNumerator,
+      returnDenominator,
+      confirmationNumerator,
+      confirmationDenominator,
+    },
+    dailyTrend,
+    alerts,
     orderBreakdown: { byStatus, activeVsTerminal, deliveredVsReturnedVsRejected },
-    productBreakdown: { topByTotalOrders, topByDeliveredOrders },
+    productBreakdown: { topByTotalOrders, topByDeliveredOrders, topByDeliveredRevenue },
   };
 });

@@ -19,7 +19,7 @@ const INIT: SyncState = { loading: false, result: null, message: "" };
 
 const ACTIONS: { key: SyncKey; label: string; endpoint: string }[] = [
   { key: "all", label: "Tout synchroniser", endpoint: "/api/sync" },
-  { key: "orders", label: "Sync commandes", endpoint: "/api/sync/orders" },
+  { key: "orders", label: "Sync commandes", endpoint: "/api/sync/orders-all" },
   { key: "products", label: "Sync produits", endpoint: "/api/sync/products" },
 ];
 

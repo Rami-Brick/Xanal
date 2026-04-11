@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import Link from "next/link";
 import { getStorePageData } from "@/lib/data/store";
 import { StoreActions } from "@/components/store/StoreActions";
+import { TrendChart } from "@/components/store/TrendChart";
 
 export const metadata: Metadata = { title: "Ma boutique · Xanal" };
 export const dynamic = "force-dynamic";
@@ -9,6 +10,7 @@ export const dynamic = "force-dynamic";
 const YELLOW = "#F0B90B";
 const GREEN = "#0ECB81";
 const RED = "#F6465D";
+const AMBER = "#fbbf24";
 
 const card: React.CSSProperties = {
   background: "#141414",
@@ -44,12 +46,26 @@ const hint: React.CSSProperties = {
 
 const FRESHNESS = {
   stable: { dot: GREEN, label: "Donnees fraiches", glow: GREEN },
-  watch: { dot: "#fbbf24", label: "A rafraichir", glow: "#fbbf24" },
+  watch: { dot: AMBER, label: "A rafraichir", glow: AMBER },
   risk: { dot: RED, label: "Sync requis", glow: RED },
 } as const;
 
+const TONE_COLORS = { stable: GREEN, watch: AMBER, risk: RED } as const;
+
 function fmt(n: number) {
   return new Intl.NumberFormat("fr-FR").format(n);
+}
+
+function fmtCurrency(n: number) {
+  return new Intl.NumberFormat("fr-TN", {
+    style: "currency",
+    currency: "TND",
+    maximumFractionDigits: n >= 1000 ? 0 : 1,
+  }).format(n);
+}
+
+function fmtPct(n: number) {
+  return `${n.toFixed(1)} %`;
 }
 
 function pct(n: number, total: number) {
@@ -66,6 +82,19 @@ function formatSyncAge(dateStr: string | null): string {
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `Il y a ${hrs} h`;
   return `Il y a ${Math.floor(hrs / 24)} j`;
+}
+
+function returnRateTone(rate: number): "stable" | "watch" | "risk" {
+  if (rate >= 20) return "risk";
+  if (rate >= 15) return "watch";
+  return "stable";
+}
+
+function confirmationRateTone(rate: number): "stable" | "watch" | "risk" {
+  if (rate === 0) return "stable";
+  if (rate < 72) return "risk";
+  if (rate < 80) return "watch";
+  return "stable";
 }
 
 function Bar({
@@ -104,9 +133,11 @@ export default async function StorePage() {
   const d = await getStorePageData();
   const freshness = FRESHNESS[d.connection.syncFreshness];
   const maxStatus = Math.max(...d.orderBreakdown.byStatus.map((s) => s.count), 1);
+  const rv = d.revenueMetrics;
 
   return (
     <>
+      {/* Header */}
       <header
         style={{
           position: "sticky",
@@ -158,23 +189,40 @@ export default async function StorePage() {
             </span>
           </div>
 
-          <Link
-            href="/dashboard"
-            style={{
-              fontSize: 12,
-              fontWeight: 500,
-              color: "rgba(255,255,255,0.38)",
-              textDecoration: "none",
-              padding: "6px 14px",
-              borderRadius: 8,
-              border: "1px solid rgba(255,255,255,0.1)",
-              letterSpacing: "0.01em",
-              transition: "color 0.12s, border-color 0.12s",
-              whiteSpace: "nowrap",
-            }}
-          >
-            Tableau de bord →
-          </Link>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Link
+              href="/settings"
+              style={{
+                fontSize: 12,
+                fontWeight: 500,
+                color: "rgba(255,255,255,0.38)",
+                textDecoration: "none",
+                padding: "6px 14px",
+                borderRadius: 8,
+                border: "1px solid rgba(255,255,255,0.1)",
+                letterSpacing: "0.01em",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Parametres
+            </Link>
+            <Link
+              href="/dashboard"
+              style={{
+                fontSize: 12,
+                fontWeight: 500,
+                color: "rgba(255,255,255,0.38)",
+                textDecoration: "none",
+                padding: "6px 14px",
+                borderRadius: 8,
+                border: "1px solid rgba(255,255,255,0.1)",
+                letterSpacing: "0.01em",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Tableau de bord
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -188,6 +236,7 @@ export default async function StorePage() {
           gap: 48,
         }}
       >
+        {/* Store identity + sync freshness */}
         <div
           style={{
             display: "flex",
@@ -287,8 +336,9 @@ export default async function StorePage() {
           )}
         </div>
 
+        {/* Section 1: Indicateurs cles (financial hero) */}
         <section>
-          <p style={eyebrow}>Vue d&apos;ensemble</p>
+          <p style={eyebrow}>Indicateurs cles</p>
           <div
             style={{
               display: "grid",
@@ -299,58 +349,40 @@ export default async function StorePage() {
             {(
               [
                 {
-                  label: "Commandes en base",
-                  value: fmt(d.kpis.totalDatabaseOrders),
-                  sub: "hors tests",
-                  accent: undefined,
-                },
-                {
-                  label: "Commandes valides",
-                  value: fmt(d.kpis.validOrders),
-                  sub: "hors supprimees",
-                  accent: YELLOW,
-                },
-                {
-                  label: "Actives",
-                  value: fmt(d.kpis.activeOrders),
-                  sub: pct(d.kpis.activeOrders, d.kpis.validOrders) + " des valides",
-                  accent: undefined,
-                },
-                {
-                  label: "Terminales",
-                  value: fmt(d.kpis.terminalOrders),
-                  sub: pct(d.kpis.terminalOrders, d.kpis.validOrders) + " des valides",
-                  accent: undefined,
-                },
-                {
-                  label: "Livrees",
-                  value: fmt(d.kpis.deliveredOrders),
-                  sub: pct(d.kpis.deliveredOrders, d.kpis.validOrders) + " des valides",
+                  label: "Revenu livre",
+                  value: fmtCurrency(rv.grossRevenue),
+                  sub: `${fmt(d.kpis.deliveredOrders)} commandes livrees`,
                   accent: GREEN,
                 },
                 {
-                  label: "Retournees",
-                  value: fmt(d.kpis.returnedOrders),
-                  sub: pct(d.kpis.returnedOrders, d.kpis.validOrders) + " des valides",
-                  accent: RED,
+                  label: "Panier moyen",
+                  value: fmtCurrency(rv.averageOrderValue),
+                  sub: `sur ${fmt(d.kpis.deliveredOrders)} livraisons`,
+                  accent: YELLOW,
                 },
                 {
-                  label: "Rejetees",
-                  value: fmt(d.kpis.rejectedOrders),
-                  sub: pct(d.kpis.rejectedOrders, d.kpis.validOrders) + " des valides",
+                  label: "Commandes actives",
+                  value: fmt(d.kpis.activeOrders),
+                  sub: `${pct(d.kpis.activeOrders, d.kpis.validOrders)} des valides`,
                   accent: undefined,
                 },
                 {
-                  label: "Produits",
-                  value: fmt(d.kpis.totalProducts),
-                  sub: "catalogue",
-                  accent: undefined,
+                  label: "Taux de retour",
+                  value: fmtPct(rv.returnRate),
+                  sub: `${fmt(rv.returnNumerator)} retours / ${fmt(rv.returnDenominator)} expediees`,
+                  accent: TONE_COLORS[returnRateTone(rv.returnRate)],
                 },
                 {
-                  label: "Produits actifs",
-                  value: fmt(d.kpis.activeProducts),
-                  sub: pct(d.kpis.activeProducts, d.kpis.totalProducts) + " du catalogue",
-                  accent: undefined,
+                  label: "Taux de confirmation",
+                  value: fmtPct(rv.confirmationRate),
+                  sub: `${fmt(rv.confirmationNumerator)} / ${fmt(rv.confirmationDenominator)} traitees`,
+                  accent: TONE_COLORS[confirmationRateTone(rv.confirmationRate)],
+                },
+                {
+                  label: "Commandes livrees",
+                  value: fmt(d.kpis.deliveredOrders),
+                  sub: `${pct(d.kpis.deliveredOrders, d.kpis.validOrders)} des valides`,
+                  accent: GREEN,
                 },
               ] as { label: string; value: string; sub: string; accent: string | undefined }[]
             ).map(({ label, value, sub, accent }) => (
@@ -363,8 +395,58 @@ export default async function StorePage() {
           </div>
         </section>
 
+        {/* Section 2: Tendance */}
         <section>
-          <p style={eyebrow}>Commandes</p>
+          <p style={eyebrow}>Tendance</p>
+          <TrendChart data={d.dailyTrend} />
+        </section>
+
+        {/* Section 3: Alertes */}
+        {d.alerts.length > 0 && (
+          <section>
+            <p style={eyebrow}>Alertes</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {d.alerts.slice(0, 3).map((alert, i) => (
+                <div
+                  key={i}
+                  style={{
+                    ...card,
+                    padding: "16px 20px",
+                    borderLeft: `3px solid ${TONE_COLORS[alert.tone]}`,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 4,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color:
+                        alert.tone === "stable"
+                          ? "rgba(255,255,255,0.5)"
+                          : TONE_COLORS[alert.tone],
+                    }}
+                  >
+                    {alert.title}
+                  </span>
+                  <span style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", lineHeight: 1.4 }}>
+                    {alert.body}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Section 4: Pipeline (existing commandes breakdown) */}
+        <section>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 16, marginBottom: 16 }}>
+            <p style={{ ...eyebrow, marginBottom: 0 }}>Pipeline</p>
+            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.18)" }}>
+              {fmt(d.kpis.validOrders)} valides · {fmt(d.kpis.totalProducts)} produits
+            </span>
+          </div>
           <div
             style={{
               display: "grid",
@@ -372,6 +454,7 @@ export default async function StorePage() {
               gap: 10,
             }}
           >
+            {/* Status breakdown */}
             <div style={{ ...card, padding: "24px 26px" }}>
               <p
                 style={{
@@ -415,6 +498,7 @@ export default async function StorePage() {
               </div>
             </div>
 
+            {/* Active/Terminal + Terminal outcomes */}
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <div style={{ ...card, flex: 1 }}>
                 <p style={eyebrow}>Actif / Terminal</p>
@@ -473,78 +557,161 @@ export default async function StorePage() {
               <div style={{ ...card, flex: 1 }}>
                 <p style={eyebrow}>Resultats terminaux</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                  {d.orderBreakdown.deliveredVsReturnedVsRejected.map(({ label, count, pct: p }) => {
-                    const barColor =
-                      label === "LivrÃ©es"
-                        ? GREEN
-                        : label === "RejetÃ©es"
-                          ? RED
-                          : "rgba(255,255,255,0.22)";
-
-                    return (
-                      <div key={label}>
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "baseline",
-                          }}
-                        >
-                          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.45)" }}>
-                            {label}
-                          </span>
-                          <div style={{ display: "flex", alignItems: "baseline", gap: 7 }}>
-                            <span
-                              style={{
-                                fontFamily: "var(--font-geist-mono), 'Geist Mono', monospace",
-                                fontSize: 22,
-                                fontWeight: 500,
-                                color: "#fff",
-                              }}
-                            >
-                              {fmt(count)}
-                            </span>
-                            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.22)" }}>
-                              {Math.round(p)} %
-                            </span>
-                          </div>
-                        </div>
-                        <div
-                          style={{
-                            height: 2,
-                            background: "rgba(255,255,255,0.07)",
-                            borderRadius: 99,
-                            marginTop: 9,
-                            overflow: "hidden",
-                          }}
-                        >
+                  {d.orderBreakdown.deliveredVsReturnedVsRejected.map(
+                    ({ label, count, pct: p }) => {
+                      const barColor =
+                        label === "Livr\u00e9es"
+                          ? GREEN
+                          : label === "Rejet\u00e9es"
+                            ? RED
+                            : "rgba(255,255,255,0.22)";
+                      return (
+                        <div key={label}>
                           <div
                             style={{
-                              height: "100%",
-                              width: `${p}%`,
-                              background: barColor,
-                              borderRadius: 99,
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "baseline",
                             }}
-                          />
+                          >
+                            <span style={{ fontSize: 13, color: "rgba(255,255,255,0.45)" }}>
+                              {label}
+                            </span>
+                            <div style={{ display: "flex", alignItems: "baseline", gap: 7 }}>
+                              <span
+                                style={{
+                                  fontFamily: "var(--font-geist-mono), 'Geist Mono', monospace",
+                                  fontSize: 22,
+                                  fontWeight: 500,
+                                  color: "#fff",
+                                }}
+                              >
+                                {fmt(count)}
+                              </span>
+                              <span style={{ fontSize: 10, color: "rgba(255,255,255,0.22)" }}>
+                                {Math.round(p)} %
+                              </span>
+                            </div>
+                          </div>
+                          <div
+                            style={{
+                              height: 2,
+                              background: "rgba(255,255,255,0.07)",
+                              borderRadius: 99,
+                              marginTop: 9,
+                              overflow: "hidden",
+                            }}
+                          >
+                            <div
+                              style={{
+                                height: "100%",
+                                width: `${p}%`,
+                                background: barColor,
+                                borderRadius: 99,
+                              }}
+                            />
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    }
+                  )}
                 </div>
               </div>
             </div>
           </div>
         </section>
 
+        {/* Section 5: Produits (3 rankings) */}
         <section>
           <p style={eyebrow}>Produits</p>
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+              gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
               gap: 10,
             }}
           >
+            {/* Top by delivered revenue */}
+            <div style={{ ...card, padding: "24px 26px" }}>
+              <p
+                style={{
+                  fontSize: 11,
+                  fontWeight: 500,
+                  color: "rgba(255,255,255,0.35)",
+                  marginBottom: 8,
+                  letterSpacing: "0.04em",
+                }}
+              >
+                <span style={{ color: YELLOW }}>● </span>Revenu par produit
+              </p>
+              <p style={{ fontSize: 11, color: "rgba(255,255,255,0.18)", marginBottom: 18 }}>
+                Commandes livrees uniquement
+              </p>
+              {d.productBreakdown.topByDeliveredRevenue.length === 0 ? (
+                <p style={{ fontSize: 12, color: "rgba(255,255,255,0.18)" }}>
+                  Aucune donnee disponible
+                </p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                  {d.productBreakdown.topByDeliveredRevenue.slice(0, 6).map(
+                    ({ productId, name, deliveredRevenue, revenueShare }, idx) => (
+                      <div
+                        key={productId}
+                        style={{ display: "flex", alignItems: "center", gap: 12 }}
+                      >
+                        <span
+                          style={{
+                            fontSize: 10,
+                            color: "rgba(255,255,255,0.18)",
+                            fontWeight: 600,
+                            width: 16,
+                            textAlign: "right",
+                            flexShrink: 0,
+                          }}
+                        >
+                          {idx + 1}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 13,
+                            color: "rgba(255,255,255,0.65)",
+                            flex: 1,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {name}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 10,
+                            color: "rgba(255,255,255,0.22)",
+                            flexShrink: 0,
+                            marginRight: 4,
+                          }}
+                        >
+                          {revenueShare.toFixed(0)} %
+                        </span>
+                        <span
+                          style={{
+                            fontFamily: "var(--font-geist-mono), 'Geist Mono', monospace",
+                            fontSize: 16,
+                            fontWeight: 500,
+                            color: YELLOW,
+                            flexShrink: 0,
+                          }}
+                        >
+                          {fmtCurrency(deliveredRevenue)}
+                        </span>
+                      </div>
+                    )
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Top by total orders */}
             <div style={{ ...card, padding: "24px 26px" }}>
               <p
                 style={{
@@ -614,6 +781,7 @@ export default async function StorePage() {
               )}
             </div>
 
+            {/* Top by delivered orders */}
             <div style={{ ...card, padding: "24px 26px" }}>
               <p
                 style={{
@@ -627,7 +795,7 @@ export default async function StorePage() {
                 <span style={{ color: GREEN }}>● </span>Livraisons confirmees
               </p>
               <p style={{ fontSize: 11, color: "rgba(255,255,255,0.18)", marginBottom: 18 }}>
-                Base uniquement sur les commandes valides livrees
+                Commandes valides livrees
               </p>
               {d.productBreakdown.topByDeliveredOrders.length === 0 ? (
                 <p style={{ fontSize: 12, color: "rgba(255,255,255,0.18)" }}>
@@ -685,6 +853,7 @@ export default async function StorePage() {
           </div>
         </section>
 
+        {/* Section 6: Actions */}
         <section>
           <p style={eyebrow}>Actions</p>
           <StoreActions connected={d.connection.connected} />
