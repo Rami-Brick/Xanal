@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import { getProductsPageData } from "@/lib/data/products";
 
-export const metadata: Metadata = { title: "Produits Â· Xanal" };
+export const metadata: Metadata = { title: "Produits · Xanal" };
 export const dynamic = "force-dynamic";
 
 const card: React.CSSProperties = {
@@ -72,12 +72,10 @@ function ProductRow({
         borderBottom: "1px solid rgba(255,255,255,0.05)",
       }}
     >
-      {/* Rank */}
       <span style={{ fontSize: 11, color: "rgba(255,255,255,0.2)", fontWeight: 500, paddingTop: 2 }}>
         {rank}
       </span>
 
-      {/* Name + bar */}
       <div>
         <p style={{ fontSize: 13, color: "rgba(255,255,255,0.78)", lineHeight: 1.3, marginBottom: 6, wordBreak: "break-word" }}>
           {name}
@@ -87,7 +85,6 @@ function ProductRow({
         </div>
       </div>
 
-      {/* Counts */}
       <div style={{ textAlign: "right", flexShrink: 0 }}>
         <p style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 18, fontWeight: 500, color: "#fff", lineHeight: 1 }}>
           {fmt(primary)}
@@ -108,8 +105,6 @@ export default async function ProductsPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-
-      {/* Page title */}
       <div>
         <p style={eyebrow}>Produits</p>
         <h1 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 28, fontWeight: 500, color: "#111", letterSpacing: "-0.02em", lineHeight: 1.1 }}>
@@ -117,7 +112,6 @@ export default async function ProductsPage() {
         </h1>
       </div>
 
-      {/* KPI strip */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 12 }}>
         <div style={card}>
           <p style={eyebrow}>Produits totaux</p>
@@ -137,17 +131,14 @@ export default async function ProductsPage() {
         <div style={card}>
           <p style={eyebrow}>Avec livraisons</p>
           <p style={bigNumber}>{fmt(d.byDeliveredOrders.filter((p) => p.deliveredOrders > 0).length)}</p>
-          <p style={hint}>au moins 1 livrÃ©e</p>
+          <p style={hint}>au moins 1 livrée</p>
         </div>
       </div>
 
-      {/* Side-by-side product tables */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-
-        {/* By total orders */}
         <div style={{ ...card, padding: "24px 28px" }}>
           <p style={{ ...eyebrow, marginBottom: 4 }}>Par commandes totales</p>
-          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.2)", marginBottom: 16 }}>Toutes commandes rÃ©elles confondues</p>
+          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.2)", marginBottom: 16 }}>Toutes commandes réelles confondues</p>
           <div>
             {d.byTotalOrders.map((p, i) => (
               <ProductRow
@@ -157,21 +148,20 @@ export default async function ProductsPage() {
                 primary={p.totalOrders}
                 secondary={p.totalUnits}
                 primaryLabel="commandes"
-                secondaryLabel="unitÃ©s"
+                secondaryLabel="unités"
                 barValue={p.totalOrders}
                 barMax={maxTotal}
               />
             ))}
             {d.byTotalOrders.length === 0 && (
-              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.25)", paddingTop: 12 }}>Aucune donnÃ©e</p>
+              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.25)", paddingTop: 12 }}>Aucune donnée</p>
             )}
           </div>
         </div>
 
-        {/* By delivered orders */}
         <div style={{ ...card, padding: "24px 28px" }}>
-          <p style={{ ...eyebrow, marginBottom: 4 }}>Par commandes livrÃ©es</p>
-          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.2)", marginBottom: 16 }}>Uniquement les commandes avec statut livrÃ©</p>
+          <p style={{ ...eyebrow, marginBottom: 4 }}>Par commandes livrées</p>
+          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.2)", marginBottom: 16 }}>Uniquement les commandes avec statut livré</p>
           <div>
             {d.byDeliveredOrders.map((p, i) => (
               <ProductRow
@@ -180,14 +170,14 @@ export default async function ProductsPage() {
                 name={p.name}
                 primary={p.deliveredOrders}
                 secondary={p.deliveredUnits}
-                primaryLabel="livrÃ©es"
-                secondaryLabel="unitÃ©s livrÃ©es"
+                primaryLabel="livrées"
+                secondaryLabel="unités livrées"
                 barValue={p.deliveredOrders}
                 barMax={maxDelivered}
               />
             ))}
             {d.byDeliveredOrders.length === 0 && (
-              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.25)", paddingTop: 12 }}>Aucune donnÃ©e</p>
+              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.25)", paddingTop: 12 }}>Aucune donnée</p>
             )}
           </div>
         </div>

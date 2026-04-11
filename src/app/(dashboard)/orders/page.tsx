@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import { getOrdersPageData } from "@/lib/data/orders";
 
-export const metadata: Metadata = { title: "Commandes Â· Xanal" };
+export const metadata: Metadata = { title: "Commandes · Xanal" };
 export const dynamic = "force-dynamic";
 
 const card: React.CSSProperties = {
@@ -67,8 +67,6 @@ export default async function OrdersPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-
-      {/* Page title */}
       <div>
         <p style={eyebrow}>Commandes</p>
         <h1 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 28, fontWeight: 500, color: "#111", letterSpacing: "-0.02em", lineHeight: 1.1 }}>
@@ -76,16 +74,15 @@ export default async function OrdersPage() {
         </h1>
       </div>
 
-      {/* KPI strip */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 12 }}>
         {[
           { label: "Total", value: fmt(d.totalOrders), sub: "hors tests" },
           { label: "Actives", value: fmt(d.activeOrders), sub: "pipeline en cours" },
-          { label: "Terminales", value: fmt(d.terminalOrders), sub: "livrÃ©es / retournÃ©es / rejetÃ©es" },
+          { label: "Terminales", value: fmt(d.terminalOrders), sub: "livrées / retournées / rejetées" },
           {
             label: "Taux terminal",
-            value: d.totalOrders > 0 ? `${Math.round((d.terminalOrders / d.totalOrders) * 100)} %` : "â€”",
-            sub: "commandes rÃ©solues",
+            value: d.totalOrders > 0 ? `${Math.round((d.terminalOrders / d.totalOrders) * 100)} %` : "—",
+            sub: "commandes résolues",
           },
         ].map(({ label, value, sub }) => (
           <div key={label} style={card}>
@@ -96,12 +93,9 @@ export default async function OrdersPage() {
         ))}
       </div>
 
-      {/* Two-column: status breakdown + active vs terminal */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-
-        {/* Status breakdown */}
         <div style={{ ...card, padding: "24px 28px" }}>
-          <p style={{ ...eyebrow, marginBottom: 20 }}>RÃ©partition par statut</p>
+          <p style={{ ...eyebrow, marginBottom: 20 }}>Répartition par statut</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             {d.byStatus.map(({ label, count }) => (
               <div key={label}>
@@ -117,10 +111,7 @@ export default async function OrdersPage() {
           </div>
         </div>
 
-        {/* Splits */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-
-          {/* Active vs terminal */}
           <div style={{ ...card, padding: "24px 28px" }}>
             <p style={{ ...eyebrow, marginBottom: 16 }}>Actif vs Terminal</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -139,9 +130,8 @@ export default async function OrdersPage() {
             </div>
           </div>
 
-          {/* Delivered / returned / rejected */}
           <div style={{ ...card, padding: "24px 28px" }}>
-            <p style={{ ...eyebrow, marginBottom: 16 }}>LivrÃ© / RetournÃ© / RejetÃ©</p>
+            <p style={{ ...eyebrow, marginBottom: 16 }}>Livré / Retourné / Rejeté</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {d.deliveredVsReturnedVsRejected.map(({ label, count, pct }) => (
                 <div key={label}>
@@ -152,7 +142,7 @@ export default async function OrdersPage() {
                       <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>{Math.round(pct)} %</span>
                     </div>
                   </div>
-                  <Bar value={count} max={drrMax} accent={label === "LivrÃ©es"} />
+                  <Bar value={count} max={drrMax} accent={label === "Livrées"} />
                 </div>
               ))}
             </div>
@@ -160,7 +150,6 @@ export default async function OrdersPage() {
         </div>
       </div>
 
-      {/* Delivery company distribution */}
       {d.byDeliveryCompany.length > 0 && (
         <div style={{ ...card, padding: "24px 28px" }}>
           <p style={{ ...eyebrow, marginBottom: 20 }}>Distribution par transporteur</p>

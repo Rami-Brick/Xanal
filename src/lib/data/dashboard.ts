@@ -19,29 +19,34 @@ async function fetchAll<T>(table: string, cols: string, orderCol = "id"): Promis
   const supabase = createAdminClient();
   const rows: T[] = [];
   let page = 0;
+
   while (true) {
     const { data, error } = await supabase
       .from(table)
       .select(cols)
       .order(orderCol, { ascending: true })
       .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+
     if (error) throw new Error(`${table}: ${error.message}`);
+
     const batch = (data ?? []) as T[];
     rows.push(...batch);
+
     if (batch.length < PAGE_SIZE) break;
     page += 1;
   }
+
   return rows;
 }
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "En attente",
-  confirmed: "ConfirmÃ©es",
-  deposit: "DÃ©posÃ©es",
+  confirmed: "Confirmées",
+  deposit: "Déposées",
   "in transit": "En transit",
-  delivered: "LivrÃ©es",
-  returned: "RetournÃ©es",
-  rejected: "RejetÃ©es",
+  delivered: "Livrées",
+  returned: "Retournées",
+  rejected: "Rejetées",
 };
 
 export interface DashboardOverviewData {
@@ -87,6 +92,7 @@ export const getDashboardOverview = cache(async (): Promise<DashboardOverviewDat
     const s = ns(o.status);
     if (statusMap.has(s)) statusMap.set(s, (statusMap.get(s) ?? 0) + 1);
   }
+
   const byStatus = Object.keys(STATUS_LABELS).map((s) => ({
     status: s,
     label: STATUS_LABELS[s],
@@ -99,8 +105,8 @@ export const getDashboardOverview = cache(async (): Promise<DashboardOverviewDat
   const syncFreshness: "stable" | "watch" | "risk" = lastSyncFailed
     ? "risk"
     : ageMs > 6 * 60 * 60 * 1000
-    ? "watch"
-    : "stable";
+      ? "watch"
+      : "stable";
 
   return {
     totalOrders: real.length,

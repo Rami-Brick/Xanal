@@ -31,8 +31,10 @@ async function fetchAllOrders(): Promise<OrderRow[]> {
       .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
     if (error) throw new Error(`orders fetch failed: ${error.message}`);
+
     const batch = (data ?? []) as OrderRow[];
     rows.push(...batch);
+
     if (batch.length < PAGE_SIZE) break;
     page += 1;
   }
@@ -52,18 +54,23 @@ export interface OrdersPageData {
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "En attente",
-  confirmed: "ConfirmÃ©es",
-  deposit: "DÃ©posÃ©es",
+  confirmed: "Confirmées",
+  deposit: "Déposées",
   "in transit": "En transit",
-  delivered: "LivrÃ©es",
-  returned: "RetournÃ©es",
-  rejected: "RejetÃ©es",
-  cancelled: "AnnulÃ©es",
+  delivered: "Livrées",
+  returned: "Retournées",
+  rejected: "Rejetées",
+  cancelled: "Annulées",
 };
 
 const TRACKED_STATUSES = [
-  "pending", "confirmed", "deposit", "in transit",
-  "delivered", "returned", "rejected",
+  "pending",
+  "confirmed",
+  "deposit",
+  "in transit",
+  "delivered",
+  "returned",
+  "rejected",
 ];
 
 export const getOrdersPageData = cache(async (): Promise<OrdersPageData> => {
@@ -78,25 +85,25 @@ export const getOrdersPageData = cache(async (): Promise<OrdersPageData> => {
     (o) => isTerminalOrder(normalizeStatus(o.status), o.history, now)
   );
 
-  // Status repartition
   const statusMap = new Map<string, number>();
   for (const status of TRACKED_STATUSES) statusMap.set(status, 0);
   for (const o of real) {
     const s = normalizeStatus(o.status);
     if (statusMap.has(s)) statusMap.set(s, (statusMap.get(s) ?? 0) + 1);
   }
+
   const byStatus = TRACKED_STATUSES.map((s) => ({
     status: s,
     label: STATUS_LABELS[s] ?? s,
     count: statusMap.get(s) ?? 0,
   }));
 
-  // Delivery company distribution
   const companyMap = new Map<string, number>();
   for (const o of real) {
-    const c = o.delivery_company?.trim() || "Non renseignÃ©";
+    const c = o.delivery_company?.trim() || "Non renseigné";
     companyMap.set(c, (companyMap.get(c) ?? 0) + 1);
   }
+
   const byDeliveryCompany = Array.from(companyMap.entries())
     .map(([company, count]) => ({ company, count }))
     .sort((a, b) => b.count - a.count)
@@ -113,9 +120,9 @@ export const getOrdersPageData = cache(async (): Promise<OrdersPageData> => {
   const rejected = real.filter((o) => normalizeStatus(o.status) === "rejected").length;
   const drrTotal = delivered + returned + rejected;
   const deliveredVsReturnedVsRejected = [
-    { label: "LivrÃ©es", count: delivered, pct: drrTotal > 0 ? (delivered / drrTotal) * 100 : 0 },
-    { label: "RetournÃ©es", count: returned, pct: drrTotal > 0 ? (returned / drrTotal) * 100 : 0 },
-    { label: "RejetÃ©es", count: rejected, pct: drrTotal > 0 ? (rejected / drrTotal) * 100 : 0 },
+    { label: "Livrées", count: delivered, pct: drrTotal > 0 ? (delivered / drrTotal) * 100 : 0 },
+    { label: "Retournées", count: returned, pct: drrTotal > 0 ? (returned / drrTotal) * 100 : 0 },
+    { label: "Rejetées", count: rejected, pct: drrTotal > 0 ? (rejected / drrTotal) * 100 : 0 },
   ];
 
   return {
