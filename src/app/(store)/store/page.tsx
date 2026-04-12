@@ -3,6 +3,12 @@ import Link from "next/link";
 import { getStorePageData } from "@/lib/data/store";
 import { StoreActions } from "@/components/store/StoreActions";
 import { TrendChart } from "@/components/store/TrendChart";
+import { MonthlyPnl } from "@/components/store/MonthlyPnl";
+
+function currentMonthIso(): string {
+  const dt = new Date();
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-01`;
+}
 
 export const metadata: Metadata = { title: "Ma boutique · Xanal" };
 export const dynamic = "force-dynamic";
@@ -401,6 +407,517 @@ export default async function StorePage() {
           <TrendChart data={d.dailyTrend} />
         </section>
 
+        {/* Section 2bis: Rentabilite */}
+        <section>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 16 }}>
+            <p style={{ ...eyebrow, marginBottom: 0 }}>Rentabilite</p>
+            {d.margins.totalActiveProducts > 0 && (
+              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.22)" }}>
+                {fmt(d.margins.productsWithCogs)} / {fmt(d.margins.totalActiveProducts)} produits configures
+              </span>
+            )}
+            <Link
+              href="/settings"
+              style={{
+                fontSize: 11,
+                color: YELLOW,
+                textDecoration: "none",
+                marginLeft: "auto",
+                opacity: 0.7,
+              }}
+            >
+              Configurer les couts →
+            </Link>
+          </div>
+
+          {d.margins.productsMissingCogs > 0 && (
+            <div
+              style={{
+                ...card,
+                borderLeft: `3px solid ${AMBER}`,
+                padding: "14px 18px",
+                marginBottom: 10,
+                background: "rgba(251,191,36,0.04)",
+              }}
+            >
+              <p style={{ fontSize: 12, color: AMBER, fontWeight: 600, marginBottom: 4 }}>
+                {fmt(d.margins.productsMissingCogs)} produit(s) sans cout unitaire
+              </p>
+              <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", lineHeight: 1.4 }}>
+                La marge brute n&apos;inclut que les produits avec un cout configure.
+                Revenu couvert : {fmtCurrency(d.margins.configuredRevenue)} sur {fmtCurrency(rv.grossRevenue)}.
+              </p>
+            </div>
+          )}
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+              gap: 10,
+            }}
+          >
+            <div style={card}>
+              <p style={eyebrow}>Profit brut</p>
+              <p style={{ ...bigNum, color: d.margins.grossProfit > 0 ? GREEN : d.margins.grossProfit < 0 ? RED : "#fff" }}>
+                {fmtCurrency(d.margins.grossProfit)}
+              </p>
+              <p style={hint}>Revenu livre moins COGS</p>
+            </div>
+            <div style={card}>
+              <p style={eyebrow}>Marge brute</p>
+              <p
+                style={{
+                  ...bigNum,
+                  color:
+                    d.margins.gpmPct >= 35
+                      ? GREEN
+                      : d.margins.gpmPct >= 22
+                        ? AMBER
+                        : d.margins.gpmPct > 0
+                          ? RED
+                          : "#fff",
+                }}
+              >
+                {d.margins.configuredRevenue > 0 ? fmtPct(d.margins.gpmPct) : "—"}
+              </p>
+              <p style={hint}>
+                Sur {fmtCurrency(d.margins.configuredRevenue)} configures
+              </p>
+            </div>
+            <div style={card}>
+              <p style={eyebrow}>CPO</p>
+              <p
+                style={{
+                  ...bigNum,
+                  color:
+                    d.margins.cpo === 0
+                      ? "rgba(255,255,255,0.3)"
+                      : d.margins.cpo >= 42
+                        ? RED
+                        : d.margins.cpo >= 35
+                          ? AMBER
+                          : GREEN,
+                }}
+              >
+                {d.kpis.deliveredOrders > 0 ? fmtCurrency(d.margins.cpo) : "—"}
+              </p>
+              <p style={hint}>Cout par commande livree</p>
+            </div>
+            <div style={card}>
+              <p style={eyebrow}>Produits non configures</p>
+              <p
+                style={{
+                  ...bigNum,
+                  color: d.margins.productsMissingCogs > 0 ? AMBER : GREEN,
+                }}
+              >
+                {fmt(d.margins.productsMissingCogs)}
+              </p>
+              <p style={hint}>A renseigner dans parametres</p>
+            </div>
+          </div>
+
+          {/* Contribution margin + cost breakdown */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "minmax(280px, 1fr) minmax(320px, 1.2fr)",
+              gap: 10,
+              marginTop: 10,
+            }}
+          >
+            {/* CM card */}
+            <div style={{ ...card, display: "flex", flexDirection: "column", gap: 14 }}>
+              <div>
+                <p style={eyebrow}>Marge de contribution</p>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
+                  <p
+                    style={{
+                      ...bigNum,
+                      color:
+                        d.margins.contributionMargin > 0
+                          ? GREEN
+                          : d.margins.contributionMargin < 0
+                            ? RED
+                            : "#fff",
+                    }}
+                  >
+                    {fmtCurrency(d.margins.contributionMargin)}
+                  </p>
+                  <p
+                    style={{
+                      fontFamily: "var(--font-geist-mono), 'Geist Mono', monospace",
+                      fontSize: 16,
+                      fontWeight: 500,
+                      color:
+                        d.margins.cmPct >= 20
+                          ? GREEN
+                          : d.margins.cmPct >= 10
+                            ? AMBER
+                            : d.margins.cmPct > 0
+                              ? RED
+                              : "rgba(255,255,255,0.3)",
+                    }}
+                  >
+                    {d.margins.configuredRevenue > 0 ? fmtPct(d.margins.cmPct) : "—"}
+                  </p>
+                </div>
+                <p style={hint}>Profit brut moins couts variables</p>
+              </div>
+              <div
+                style={{
+                  paddingTop: 12,
+                  borderTop: "1px solid rgba(255,255,255,0.05)",
+                  fontSize: 11,
+                  color: "rgba(255,255,255,0.35)",
+                  lineHeight: 1.6,
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span>Profit brut</span>
+                  <span
+                    style={{
+                      fontFamily: "var(--font-geist-mono), 'Geist Mono', monospace",
+                      color: "rgba(255,255,255,0.55)",
+                    }}
+                  >
+                    {fmtCurrency(d.margins.grossProfit)}
+                  </span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span>− Couts variables</span>
+                  <span
+                    style={{
+                      fontFamily: "var(--font-geist-mono), 'Geist Mono', monospace",
+                      color: RED,
+                      opacity: 0.7,
+                    }}
+                  >
+                    {fmtCurrency(d.margins.costBreakdown.totalVariableCosts)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Cost breakdown card */}
+            <div style={{ ...card }}>
+              <p style={eyebrow}>Couts variables</p>
+              {(
+                [
+                  {
+                    label: "Livraison Cosmos",
+                    value: d.margins.costBreakdown.deliveryFees,
+                    detail: `${fmt(d.kpis.deliveredOrders)} × ${fmtCurrency(d.margins.fees.cosmosDeliveryFee)}`,
+                  },
+                  {
+                    label: "Retours (livraison + frais retour)",
+                    value: d.margins.costBreakdown.returnBurden,
+                    detail: `${fmt(rv.returnNumerator)} × ${fmtCurrency(d.margins.fees.cosmosDeliveryFee + d.margins.fees.cosmosReturnFee)}`,
+                  },
+                  {
+                    label: "Emballage",
+                    value: d.margins.costBreakdown.packingCosts,
+                    detail:
+                      d.margins.fees.packingCostPerPackage > 0
+                        ? `${fmt(d.kpis.deliveredOrders + rv.returnNumerator)} × ${fmtCurrency(d.margins.fees.packingCostPerPackage)}`
+                        : "Non configure",
+                  },
+                  {
+                    label: "Commission Converty",
+                    value: d.margins.costBreakdown.convertyFees,
+                    detail: `${(d.margins.fees.convertyFeeRate * 100).toFixed(2)} % sur le total`,
+                  },
+                ] as { label: string; value: number; detail: string }[]
+              ).map(({ label, value, detail }, i, arr) => {
+                const max = Math.max(...arr.map((x) => x.value), 1);
+                const w = (value / max) * 100;
+                return (
+                  <div key={label} style={{ marginTop: i === 0 ? 0 : 14 }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "baseline",
+                        gap: 8,
+                      }}
+                    >
+                      <span style={{ fontSize: 12, color: "rgba(255,255,255,0.55)" }}>
+                        {label}
+                      </span>
+                      <span
+                        style={{
+                          fontFamily: "var(--font-geist-mono), 'Geist Mono', monospace",
+                          fontSize: 13,
+                          fontWeight: 500,
+                          color: "#fff",
+                        }}
+                      >
+                        {fmtCurrency(value)}
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        height: 2,
+                        background: "rgba(255,255,255,0.05)",
+                        borderRadius: 99,
+                        marginTop: 6,
+                        overflow: "hidden",
+                      }}
+                    >
+                      <div
+                        style={{
+                          height: "100%",
+                          width: `${w}%`,
+                          background: RED,
+                          opacity: 0.55,
+                          borderRadius: 99,
+                        }}
+                      />
+                    </div>
+                    <p
+                      style={{
+                        fontSize: 10,
+                        color: "rgba(255,255,255,0.22)",
+                        marginTop: 4,
+                      }}
+                    >
+                      {detail}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* Section 2ter: P&L par produit (kill/keep) */}
+        {d.productPnl.length > 0 && (
+          <section>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 16 }}>
+              <p style={{ ...eyebrow, marginBottom: 0 }}>P&amp;L par produit</p>
+              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.22)" }}>
+                Kill / keep · tri par revenu livre
+              </span>
+            </div>
+            <div style={{ ...card, padding: "0" }}>
+              {/* Header row */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "minmax(180px,2fr) 80px 110px 100px 100px 100px",
+                  gap: 12,
+                  padding: "14px 20px",
+                  borderBottom: "1px solid rgba(255,255,255,0.06)",
+                }}
+              >
+                <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", fontWeight: 600 }}>
+                  PRODUIT
+                </span>
+                <span
+                  style={{
+                    fontSize: 10,
+                    color: "rgba(255,255,255,0.3)",
+                    fontWeight: 600,
+                    textAlign: "right",
+                  }}
+                >
+                  UNITES
+                </span>
+                <span
+                  style={{
+                    fontSize: 10,
+                    color: "rgba(255,255,255,0.3)",
+                    fontWeight: 600,
+                    textAlign: "right",
+                  }}
+                >
+                  REVENU
+                </span>
+                <span
+                  style={{
+                    fontSize: 10,
+                    color: "rgba(255,255,255,0.3)",
+                    fontWeight: 600,
+                    textAlign: "right",
+                  }}
+                >
+                  PROFIT BRUT
+                </span>
+                <span
+                  style={{
+                    fontSize: 10,
+                    color: "rgba(255,255,255,0.3)",
+                    fontWeight: 600,
+                    textAlign: "right",
+                  }}
+                >
+                  CM
+                </span>
+                <span
+                  style={{
+                    fontSize: 10,
+                    color: "rgba(255,255,255,0.3)",
+                    fontWeight: 600,
+                    textAlign: "right",
+                  }}
+                >
+                  CM %
+                </span>
+              </div>
+
+              {/* Rows */}
+              {d.productPnl.slice(0, 10).map((p) => {
+                const cmColor =
+                  p.cmPct >= 20
+                    ? GREEN
+                    : p.cmPct >= 10
+                      ? AMBER
+                      : p.cmPct > 0
+                        ? "rgba(255,255,255,0.5)"
+                        : RED;
+                const cmBold = p.contributionMargin < 0;
+                return (
+                  <div
+                    key={p.productId}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "minmax(180px,2fr) 80px 110px 100px 100px 100px",
+                      gap: 12,
+                      padding: "12px 20px",
+                      alignItems: "center",
+                      borderBottom: "1px solid rgba(255,255,255,0.03)",
+                      background: cmBold ? "rgba(246,70,93,0.04)" : "transparent",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        overflow: "hidden",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: 13,
+                          color: "rgba(255,255,255,0.75)",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {p.name}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          color: "rgba(255,255,255,0.2)",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {p.revenueShare.toFixed(0)} %
+                      </span>
+                    </div>
+                    <span
+                      style={{
+                        fontFamily: "var(--font-geist-mono), 'Geist Mono', monospace",
+                        fontSize: 13,
+                        color: "rgba(255,255,255,0.6)",
+                        textAlign: "right",
+                      }}
+                    >
+                      {fmt(p.deliveredUnits)}
+                    </span>
+                    <span
+                      style={{
+                        fontFamily: "var(--font-geist-mono), 'Geist Mono', monospace",
+                        fontSize: 13,
+                        color: YELLOW,
+                        textAlign: "right",
+                      }}
+                    >
+                      {fmtCurrency(p.deliveredRevenue)}
+                    </span>
+                    <span
+                      style={{
+                        fontFamily: "var(--font-geist-mono), 'Geist Mono', monospace",
+                        fontSize: 13,
+                        color: p.grossProfit > 0 ? GREEN : p.grossProfit < 0 ? RED : "rgba(255,255,255,0.3)",
+                        textAlign: "right",
+                      }}
+                    >
+                      {fmtCurrency(p.grossProfit)}
+                    </span>
+                    <span
+                      style={{
+                        fontFamily: "var(--font-geist-mono), 'Geist Mono', monospace",
+                        fontSize: 13,
+                        color: cmColor,
+                        textAlign: "right",
+                        fontWeight: cmBold ? 700 : 500,
+                      }}
+                    >
+                      {fmtCurrency(p.contributionMargin)}
+                    </span>
+                    <span
+                      style={{
+                        fontFamily: "var(--font-geist-mono), 'Geist Mono', monospace",
+                        fontSize: 13,
+                        color: cmColor,
+                        textAlign: "right",
+                        fontWeight: cmBold ? 700 : 500,
+                      }}
+                    >
+                      {fmtPct(p.cmPct)}
+                    </span>
+                  </div>
+                );
+              })}
+
+              {d.productPnl.length > 10 && (
+                <div
+                  style={{
+                    padding: "12px 20px",
+                    fontSize: 11,
+                    color: "rgba(255,255,255,0.3)",
+                    textAlign: "center",
+                  }}
+                >
+                  {fmt(d.productPnl.length - 10)} produit(s) supplementaire(s) non affiche(s)
+                </div>
+              )}
+            </div>
+            <p style={{ fontSize: 10, color: "rgba(255,255,255,0.2)", marginTop: 8, lineHeight: 1.4 }}>
+              CM allouee : frais logistiques et commissions repartis au prorata des unites livrees.
+              Uniquement produits avec COGS configure.
+            </p>
+          </section>
+        )}
+
+        {/* Section 2quater: Bilan mensuel */}
+        <section>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 16 }}>
+            <p style={{ ...eyebrow, marginBottom: 0 }}>Bilan mensuel</p>
+            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.22)" }}>
+              Cascade complete avec frais fixes
+            </span>
+            <Link
+              href="/settings"
+              style={{
+                fontSize: 11,
+                color: YELLOW,
+                textDecoration: "none",
+                marginLeft: "auto",
+                opacity: 0.7,
+              }}
+            >
+              Editer les frais fixes →
+            </Link>
+          </div>
+          <MonthlyPnl initialPeriod={currentMonthIso()} />
+        </section>
+
         {/* Section 3: Alertes */}
         {d.alerts.length > 0 && (
           <section>
@@ -654,58 +1171,71 @@ export default async function StorePage() {
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                   {d.productBreakdown.topByDeliveredRevenue.slice(0, 6).map(
-                    ({ productId, name, deliveredRevenue, revenueShare }, idx) => (
-                      <div
-                        key={productId}
-                        style={{ display: "flex", alignItems: "center", gap: 12 }}
-                      >
-                        <span
-                          style={{
-                            fontSize: 10,
-                            color: "rgba(255,255,255,0.18)",
-                            fontWeight: 600,
-                            width: 16,
-                            textAlign: "right",
-                            flexShrink: 0,
-                          }}
+                    ({ productId, name, deliveredRevenue, gpmPct }, idx) => {
+                      const marginColor =
+                        gpmPct === null
+                          ? "rgba(255,255,255,0.18)"
+                          : gpmPct >= 35
+                            ? GREEN
+                            : gpmPct >= 22
+                              ? AMBER
+                              : RED;
+                      return (
+                        <div
+                          key={productId}
+                          style={{ display: "flex", alignItems: "center", gap: 12 }}
                         >
-                          {idx + 1}
-                        </span>
-                        <span
-                          style={{
-                            fontSize: 13,
-                            color: "rgba(255,255,255,0.65)",
-                            flex: 1,
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {name}
-                        </span>
-                        <span
-                          style={{
-                            fontSize: 10,
-                            color: "rgba(255,255,255,0.22)",
-                            flexShrink: 0,
-                            marginRight: 4,
-                          }}
-                        >
-                          {revenueShare.toFixed(0)} %
-                        </span>
-                        <span
-                          style={{
-                            fontFamily: "var(--font-geist-mono), 'Geist Mono', monospace",
-                            fontSize: 16,
-                            fontWeight: 500,
-                            color: YELLOW,
-                            flexShrink: 0,
-                          }}
-                        >
-                          {fmtCurrency(deliveredRevenue)}
-                        </span>
-                      </div>
-                    )
+                          <span
+                            style={{
+                              fontSize: 10,
+                              color: "rgba(255,255,255,0.18)",
+                              fontWeight: 600,
+                              width: 16,
+                              textAlign: "right",
+                              flexShrink: 0,
+                            }}
+                          >
+                            {idx + 1}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: 13,
+                              color: "rgba(255,255,255,0.65)",
+                              flex: 1,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {name}
+                          </span>
+                          <span
+                            style={{
+                              fontFamily: "var(--font-geist-mono), 'Geist Mono', monospace",
+                              fontSize: 11,
+                              color: marginColor,
+                              flexShrink: 0,
+                              minWidth: 36,
+                              textAlign: "right",
+                            }}
+                            title={gpmPct === null ? "COGS non configure" : "Marge brute"}
+                          >
+                            {gpmPct === null ? "—" : `${gpmPct.toFixed(0)} %`}
+                          </span>
+                          <span
+                            style={{
+                              fontFamily: "var(--font-geist-mono), 'Geist Mono', monospace",
+                              fontSize: 16,
+                              fontWeight: 500,
+                              color: YELLOW,
+                              flexShrink: 0,
+                            }}
+                          >
+                            {fmtCurrency(deliveredRevenue)}
+                          </span>
+                        </div>
+                      );
+                    }
                   )}
                 </div>
               )}

@@ -1,6 +1,14 @@
 import { cache } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isTerminalOrder } from "@/lib/converty/order-status";
+import {
+  computeGrossProfit,
+  computeProductMargins,
+  computeContributionMargin,
+  computeCpo,
+  computeProductPnl,
+  type ProductMarginRow,
+} from "@/lib/finance/margins";
 
 const PAGE_SIZE = 1000;
 
@@ -53,6 +61,18 @@ function ns(s: string | null | undefined): string {
 
 function isValidOrderForAnalytics(order: OrderRow) {
   return !order.is_test && ns(order.status) !== "deleted";
+}
+
+function isAttemptLikeStatus(status: string) {
+  return /^attempt(\b|\s)/.test(status);
+}
+
+function isPendingOrAttemptStatus(status: string) {
+  return status === "pending" || isAttemptLikeStatus(status);
+}
+
+function isBusinessConfirmedStatus(status: string) {
+  return status !== "" && !isPendingOrAttemptStatus(status) && status !== "rejected";
 }
 
 const RETURN_ELIGIBLE_STATUSES = new Set([
@@ -144,18 +164,75 @@ export interface StorePageData {
       deliveredRevenue: number;
       deliveredUnits: number;
       revenueShare: number;
+      grossProfit: number | null;
+      gpmPct: number | null;
     }[];
   };
+  margins: {
+    grossProfit: number;
+    gpmPct: number;
+    configuredRevenue: number;
+    unconfiguredRevenue: number;
+    productsWithCogs: number;
+    productsMissingCogs: number;
+    totalActiveProducts: number;
+    contributionMargin: number;
+    cmPct: number;
+    cpo: number;
+    cpoTotalVariableCost: number;
+    deliveredCogs: number;
+    costBreakdown: {
+      deliveryFees: number;
+      returnBurden: number;
+      packingCosts: number;
+      convertyFees: number;
+      totalVariableCosts: number;
+    };
+    fees: {
+      cosmosDeliveryFee: number;
+      cosmosReturnFee: number;
+      packingCostPerPackage: number;
+      convertyFeeRate: number;
+    };
+  };
+  productPnl: {
+    productId: string;
+    name: string;
+    imageUrl: string | null;
+    deliveredUnits: number;
+    deliveredRevenue: number;
+    deliveredCogs: number;
+    grossProfit: number;
+    gpmPct: number;
+    allocatedOpsCost: number;
+    contributionMargin: number;
+    cmPct: number;
+    revenueShare: number;
+  }[];
 }
 
 export const getStorePageData = cache(async (): Promise<StorePageData> => {
   const supabase = createAdminClient();
   const now = new Date();
 
-  const [orders, products, orderItems, tokenResult, lastSyncResult] = await Promise.all([
+  const [
+    orders,
+    products,
+    orderItems,
+    productCostsResult,
+    businessSettingsResult,
+    tokenResult,
+    lastSyncResult,
+  ] = await Promise.all([
     fetchAll<OrderRow>("orders", "id, status, is_test, history, total_price, converty_created_at", "id"),
     fetchAll<ProductRow>("products", "id, name, status, image_url", "id"),
     fetchAll<OrderItemRow>("order_items", "order_id, product_id, product_name, quantity, price_per_unit", "id"),
+    supabase.from("product_costs").select("product_id, unit_cogs"),
+    supabase
+      .from("business_settings")
+      .select("cosmos_delivery_fee, cosmos_return_fee, packing_cost_per_package, converty_fee_rate")
+      .limit(1)
+      .maybeSingle(),
     supabase
       .from("converty_tokens")
       .select("store_id")
@@ -169,6 +246,19 @@ export const getStorePageData = cache(async (): Promise<StorePageData> => {
       .limit(1)
       .maybeSingle(),
   ]);
+
+  const productCosts = (productCostsResult.data ?? []).map((row) => ({
+    product_id: row.product_id as string,
+    unit_cogs: Number(row.unit_cogs ?? 0),
+  }));
+
+  const settings = businessSettingsResult.data;
+  const fees = {
+    cosmosDeliveryFee: Number(settings?.cosmos_delivery_fee ?? 0),
+    cosmosReturnFee: Number(settings?.cosmos_return_fee ?? 0),
+    packingCostPerPackage: Number(settings?.packing_cost_per_package ?? 0),
+    convertyFeeRate: Number(settings?.converty_fee_rate ?? 0.003),
+  };
 
   // Connection & freshness
   const storeId = tokenResult.data?.store_id ?? null;
@@ -238,13 +328,18 @@ export const getStorePageData = cache(async (): Promise<StorePageData> => {
   const returnRate =
     returnDenominator > 0 ? (returnNumerator / returnDenominator) * 100 : 0;
 
-  // Confirmation rate: confirmed / (confirmed + rejected)
+  // Confirmation rate:
+  // confirmed orders / treated orders
+  // Business rule:
+  // - pending + attempt* = not yet treated
+  // - rejected = treated but not confirmed
+  // - anything else = confirmed
   const confirmationNumerator = real.filter(
-    (o) => ns(o.status) === "confirmed"
+    (o) => isBusinessConfirmedStatus(ns(o.status))
   ).length;
   const confirmationDenominator = real.filter((o) => {
     const s = ns(o.status);
-    return s === "confirmed" || s === "rejected";
+    return s !== "" && !isPendingOrAttemptStatus(s);
   }).length;
   const confirmationRate =
     confirmationDenominator > 0
@@ -404,17 +499,150 @@ export const getStorePageData = cache(async (): Promise<StorePageData> => {
       deliveredOrders,
       deliveredUnits,
     }));
+  // Phase 2C: Gross profit & per-product margins
+  const profit = computeGrossProfit({
+    deliveredOrderIds,
+    deliveredRevenue: grossRevenue,
+    orderItems,
+    productCosts,
+  });
+
+  const productMargins: Map<string, ProductMarginRow> = computeProductMargins({
+    deliveredOrderIds,
+    orderItems,
+    productCosts,
+  });
+
+  // Count delivered products (ones with units sold, not catalogue size)
+  const deliveredProductIds = new Set<string>();
+  for (const item of orderItems) {
+    if (deliveredOrderIds.has(item.order_id) && item.product_id) {
+      deliveredProductIds.add(item.product_id);
+    }
+  }
+  const productsWithCogs = Array.from(deliveredProductIds).filter((id) =>
+    profit.productsWithCogs.has(id)
+  ).length;
+  const productsMissingCogs = deliveredProductIds.size - productsWithCogs;
+
+  // Contribution margin: count both "returned" and "to be returned" as returned.
+  const returnedForCm = real.filter((o) =>
+    RETURN_NUMERATOR_STATUSES.has(ns(o.status))
+  ).length;
+  const nonTestOrdersTotalPrice = databaseOrders.reduce(
+    (sum, o) => sum + Number(o.total_price ?? 0),
+    0
+  );
+  const cm = computeContributionMargin(
+    {
+      grossProfit: profit.grossProfit,
+      deliveredCount: delivered.length,
+      returnedCount: returnedForCm,
+      nonTestOrdersTotalPrice,
+      fees: {
+        cosmosDeliveryFee: fees.cosmosDeliveryFee,
+        cosmosReturnFee: fees.cosmosReturnFee,
+        packingCostPerPackage: fees.packingCostPerPackage,
+        convertyFeeRate: fees.convertyFeeRate,
+      },
+    },
+    profit.configuredRevenue
+  );
+
+  // CPO: use the sum of per-product deliveredCogs as deliveredCogs input.
+  const deliveredCogsTotal = Array.from(productMargins.values()).reduce(
+    (sum, m) => sum + m.deliveredCogs,
+    0
+  );
+  const cpoResult = computeCpo({
+    deliveredCount: delivered.length,
+    deliveredCogs: deliveredCogsTotal,
+    deliveryFees: cm.deliveryFees,
+    returnBurden: cm.returnBurden,
+    packingCosts: cm.packingCosts,
+    convertyFees: cm.convertyFees,
+  });
+
+  // Per-product P&L (kill/keep table)
+  const productMeta = new Map(
+    allProducts.map((p) => [p.productId, { name: p.name, imageUrl: p.imageUrl }])
+  );
+  const totalDeliveredUnits = allProducts.reduce((sum, p) => sum + p.deliveredUnits, 0);
+  const productPnl = computeProductPnl({
+    deliveredOrderIds,
+    orderItems,
+    productCosts,
+    productMeta,
+    totalDeliveredRevenue: grossRevenue,
+    totalDeliveredUnits,
+    totalOpsCost: cm.totalVariableCosts,
+  }).sort((a, b) => b.deliveredRevenue - a.deliveredRevenue);
+
   const topByDeliveredRevenue = [...allProducts]
     .sort((a, b) => b.deliveredRevenue - a.deliveredRevenue)
     .slice(0, 8)
-    .map(({ productId, name, imageUrl, deliveredRevenue, deliveredUnits }) => ({
-      productId,
-      name,
-      imageUrl,
-      deliveredRevenue,
-      deliveredUnits,
-      revenueShare: grossRevenue > 0 ? (deliveredRevenue / grossRevenue) * 100 : 0,
-    }));
+    .map(({ productId, name, imageUrl, deliveredRevenue, deliveredUnits }) => {
+      const margin = productMargins.get(productId);
+      return {
+        productId,
+        name,
+        imageUrl,
+        deliveredRevenue,
+        deliveredUnits,
+        revenueShare: grossRevenue > 0 ? (deliveredRevenue / grossRevenue) * 100 : 0,
+        grossProfit: margin ? margin.grossProfit : null,
+        gpmPct: margin ? margin.gpmPct : null,
+      };
+    });
+
+  // Margin-driven alerts
+  if (productsMissingCogs > 0 && deliveredProductIds.size > 0) {
+    alerts.push({
+      title: "Couts produits incomplets",
+      body: `${productsMissingCogs} produit(s) livre(s) sans cout unitaire configure. La marge brute affichee ne couvre qu'une partie des ventes.`,
+      tone: "watch",
+    });
+  }
+  if (profit.configuredRevenue > 0 && cm.contributionMargin < 0) {
+    alerts.push({
+      title: "Marge de contribution negative",
+      body: `Les couts variables depassent le profit brut de ${Math.abs(cm.contributionMargin).toFixed(0)} TND. Verifier les prix de vente et les frais logistiques.`,
+      tone: "risk",
+    });
+  } else if (profit.configuredRevenue > 0 && cm.cmPct > 0 && cm.cmPct < 10) {
+    alerts.push({
+      title: "Marge de contribution faible",
+      body: `CM% a ${cm.cmPct.toFixed(1)} %, en dessous du seuil critique de 10 %.`,
+      tone: "risk",
+    });
+  }
+  // CPO thresholds per CEO spec: warning > 35 TND, critical > 42 TND
+  if (cpoResult.cpo >= 42) {
+    alerts.push({
+      title: "CPO critique",
+      body: `Le cout par commande livree atteint ${cpoResult.cpo.toFixed(1)} TND. Probable cause : taux de retour eleve.`,
+      tone: "risk",
+    });
+  } else if (cpoResult.cpo >= 35) {
+    alerts.push({
+      title: "CPO eleve",
+      body: `Le cout par commande livree est a ${cpoResult.cpo.toFixed(1)} TND. Surveiller les retours et la logistique.`,
+      tone: "watch",
+    });
+  }
+  // Per-product kill signals
+  const negativeCmProducts = productPnl.filter(
+    (p) => p.deliveredRevenue > 0 && p.contributionMargin < 0
+  );
+  if (negativeCmProducts.length > 0) {
+    const names = negativeCmProducts.slice(0, 2).map((p) => p.name).join(", ");
+    const more = negativeCmProducts.length > 2 ? ` +${negativeCmProducts.length - 2}` : "";
+    alerts.push({
+      title: `${negativeCmProducts.length} produit(s) non rentable(s)`,
+      body: `${names}${more} ont une CM negative. Envisager de suspendre ou reprendre le prix.`,
+      tone: "risk",
+    });
+  }
 
   return {
     connection: { storeId, connected, lastSyncAt, syncFreshness },
@@ -444,5 +672,41 @@ export const getStorePageData = cache(async (): Promise<StorePageData> => {
     alerts,
     orderBreakdown: { byStatus, activeVsTerminal, deliveredVsReturnedVsRejected },
     productBreakdown: { topByTotalOrders, topByDeliveredOrders, topByDeliveredRevenue },
+    margins: {
+      grossProfit: profit.grossProfit,
+      gpmPct: profit.gpmPct,
+      configuredRevenue: profit.configuredRevenue,
+      unconfiguredRevenue: profit.unconfiguredRevenue,
+      productsWithCogs,
+      productsMissingCogs,
+      totalActiveProducts: deliveredProductIds.size,
+      contributionMargin: cm.contributionMargin,
+      cmPct: cm.cmPct,
+      cpo: cpoResult.cpo,
+      cpoTotalVariableCost: cpoResult.totalVariableCost,
+      deliveredCogs: deliveredCogsTotal,
+      costBreakdown: {
+        deliveryFees: cm.deliveryFees,
+        returnBurden: cm.returnBurden,
+        packingCosts: cm.packingCosts,
+        convertyFees: cm.convertyFees,
+        totalVariableCosts: cm.totalVariableCosts,
+      },
+      fees,
+    },
+    productPnl: productPnl.map((p) => ({
+      productId: p.productId,
+      name: p.name,
+      imageUrl: p.imageUrl,
+      deliveredUnits: p.deliveredUnits,
+      deliveredRevenue: p.deliveredRevenue,
+      deliveredCogs: p.deliveredCogs,
+      grossProfit: p.grossProfit,
+      gpmPct: p.gpmPct,
+      allocatedOpsCost: p.allocatedOpsCost,
+      contributionMargin: p.contributionMargin,
+      cmPct: p.cmPct,
+      revenueShare: p.revenueShare,
+    })),
   };
 });
