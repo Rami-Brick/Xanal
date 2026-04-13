@@ -8,6 +8,7 @@ import {
 import { SettingsForm } from "./settings-form";
 import { CampaignsSection } from "./campaigns-section";
 import { SettlementsSection } from "./settlements-section";
+import { InvestorsSection } from "./investors-section";
 
 export const metadata: Metadata = { title: "Parametres · Xanal" };
 export const dynamic = "force-dynamic";
@@ -145,6 +146,8 @@ export default async function SettingsPage() {
         <CampaignsSection initialPeriod={initialPeriod} products={productCosts} />
 
         <SettlementsSection />
+
+        <InvestorsSection products={productCosts} />
       </main>
     </>
   );
