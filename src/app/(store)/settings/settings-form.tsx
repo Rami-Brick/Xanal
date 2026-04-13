@@ -1,8 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import type { BusinessSettings, ProductCostRow } from "@/lib/data/settings";
+import type {
+  BusinessSettings,
+  ProductCostRow,
+  OverheadPeriod,
+  OverheadCategory,
+} from "@/lib/data/settings";
+
+const OVERHEAD_LABELS: Record<OverheadCategory, string> = {
+  salaries: "Salaires",
+  rent: "Loyer",
+  phone_internet: "Telephone / Internet",
+  subscriptions: "Abonnements et logiciels",
+  tax: "Declaration fiscale",
+  daily_pickup: "Frais journaliers Cosmos",
+  other: "Autres",
+};
 
 const YELLOW = "#F0B90B";
 const GREEN = "#0ECB81";
@@ -75,9 +90,19 @@ function fmtCurrency(n: number) {
 interface Props {
   initialSettings: BusinessSettings | null;
   initialProductCosts: ProductCostRow[];
+  initialOverhead: OverheadPeriod;
 }
 
-export function SettingsForm({ initialSettings, initialProductCosts }: Props) {
+function periodToInputValue(periodIso: string): string {
+  // periodIso is "YYYY-MM-01" — input[type=month] expects "YYYY-MM"
+  return periodIso.slice(0, 7);
+}
+
+export function SettingsForm({
+  initialSettings,
+  initialProductCosts,
+  initialOverhead,
+}: Props) {
   const router = useRouter();
 
   // Fee form state
@@ -100,6 +125,74 @@ export function SettingsForm({ initialSettings, initialProductCosts }: Props) {
   });
   const [costSaving, setCostSaving] = useState(false);
   const [costResult, setCostResult] = useState<"success" | "error" | null>(null);
+
+  // Overhead state
+  const [overheadPeriod, setOverheadPeriod] = useState(
+    periodToInputValue(initialOverhead.period)
+  );
+  const [overheadAmounts, setOverheadAmounts] = useState<Record<OverheadCategory, number>>(() => {
+    const map = {} as Record<OverheadCategory, number>;
+    for (const e of initialOverhead.entries) map[e.category] = e.amount;
+    return map;
+  });
+  const [overheadLoading, setOverheadLoading] = useState(false);
+  const [overheadSaving, setOverheadSaving] = useState(false);
+  const [overheadResult, setOverheadResult] = useState<"success" | "error" | null>(null);
+
+  // Reload overhead when period changes (skip first render — initial values come from props)
+  const initialPeriodInput = periodToInputValue(initialOverhead.period);
+  useEffect(() => {
+    if (overheadPeriod === initialPeriodInput) return;
+    let cancelled = false;
+    setOverheadLoading(true);
+    setOverheadResult(null);
+    fetch(`/api/settings?overhead_period=${overheadPeriod}-01`)
+      .then((r) => r.json())
+      .then((json) => {
+        if (cancelled) return;
+        const entries: { category: OverheadCategory; amount: number }[] =
+          json?.data?.overhead?.entries ?? [];
+        const map = {} as Record<OverheadCategory, number>;
+        for (const e of entries) map[e.category] = e.amount;
+        setOverheadAmounts(map);
+      })
+      .catch(() => {
+        if (!cancelled) setOverheadResult("error");
+      })
+      .finally(() => {
+        if (!cancelled) setOverheadLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [overheadPeriod, initialPeriodInput]);
+
+  async function saveOverhead() {
+    setOverheadSaving(true);
+    setOverheadResult(null);
+    try {
+      const entries = Object.entries(overheadAmounts).map(([category, amount]) => ({
+        category,
+        amount,
+      }));
+      const res = await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "overhead",
+          period: `${overheadPeriod}-01`,
+          entries,
+        }),
+      });
+      if (!res.ok) throw new Error("failed");
+      setOverheadResult("success");
+      router.refresh();
+    } catch {
+      setOverheadResult("error");
+    } finally {
+      setOverheadSaving(false);
+    }
+  }
+
+  const overheadTotal = Object.values(overheadAmounts).reduce((sum, v) => sum + v, 0);
 
   async function saveFees() {
     setFeeSaving(true);
@@ -431,6 +524,109 @@ export function SettingsForm({ initialSettings, initialProductCosts }: Props) {
               </div>
             </>
           )}
+        </div>
+      </section>
+
+      {/* Section 3: Frais fixes mensuels */}
+      <section>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 20 }}>
+          <p style={{ ...eyebrow, marginBottom: 0 }}>Frais fixes mensuels</p>
+          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.22)" }}>
+            Salaires, loyer, abonnements, taxes — par mois
+          </span>
+        </div>
+        <div style={card}>
+          {/* Month picker */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 16,
+              marginBottom: 24,
+              paddingBottom: 20,
+              borderBottom: "1px solid rgba(255,255,255,0.06)",
+            }}
+          >
+            <label style={{ ...labelStyle, marginBottom: 0 }}>Periode</label>
+            <input
+              type="month"
+              value={overheadPeriod}
+              onChange={(e) => setOverheadPeriod(e.target.value)}
+              style={{ ...inputStyle, width: 180 }}
+            />
+            {overheadLoading && (
+              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>Chargement...</span>
+            )}
+            <div style={{ marginLeft: "auto", display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+              <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", letterSpacing: "0.1em" }}>
+                TOTAL DU MOIS
+              </span>
+              <span
+                style={{
+                  fontFamily: "var(--font-geist-mono), 'Geist Mono', monospace",
+                  fontSize: 22,
+                  fontWeight: 500,
+                  color: overheadTotal > 0 ? "#fff" : "rgba(255,255,255,0.3)",
+                  marginTop: 2,
+                }}
+              >
+                {fmtCurrency(overheadTotal)}
+              </span>
+            </div>
+          </div>
+
+          {/* Categories grid */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+              gap: 20,
+              marginBottom: 24,
+              opacity: overheadLoading ? 0.5 : 1,
+              transition: "opacity 0.15s",
+            }}
+          >
+            {(Object.keys(OVERHEAD_LABELS) as OverheadCategory[]).map((cat) => (
+              <div key={cat}>
+                <label style={labelStyle}>{OVERHEAD_LABELS[cat]} (TND)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  style={inputStyle}
+                  value={overheadAmounts[cat] || ""}
+                  placeholder="0"
+                  disabled={overheadLoading}
+                  onChange={(e) =>
+                    setOverheadAmounts((prev) => ({
+                      ...prev,
+                      [cat]: Number(e.target.value) || 0,
+                    }))
+                  }
+                />
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <button
+              onClick={saveOverhead}
+              disabled={overheadSaving || overheadLoading}
+              style={overheadSaving || overheadLoading ? btnDisabled : btnPrimary}
+            >
+              {overheadSaving ? "En cours..." : "Enregistrer les frais"}
+            </button>
+            {overheadResult === "success" && (
+              <span style={{ fontSize: 12, color: GREEN }}>Enregistre</span>
+            )}
+            {overheadResult === "error" && (
+              <span style={{ fontSize: 12, color: RED }}>Erreur</span>
+            )}
+          </div>
+
+          <p style={{ fontSize: 10, color: "rgba(255,255,255,0.2)", marginTop: 14, lineHeight: 1.5 }}>
+            Les frais sont stockes par mois. Modifier un mois passe ne change pas l&apos;historique : une trace est conservee a chaque modification.
+          </p>
         </div>
       </section>
     </>

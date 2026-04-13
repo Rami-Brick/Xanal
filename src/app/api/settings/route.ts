@@ -4,6 +4,10 @@ import {
   updateBusinessSettings,
   getProductCosts,
   upsertProductCosts,
+  getOverheadForPeriod,
+  upsertOverheadEntries,
+  type OverheadCategory,
+  OVERHEAD_CATEGORIES,
 } from "@/lib/data/settings";
 
 interface ApiResponse<T = unknown> {
@@ -12,8 +16,16 @@ interface ApiResponse<T = unknown> {
   error?: string;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const overheadPeriod = searchParams.get("overhead_period");
+
+    if (overheadPeriod) {
+      const overhead = await getOverheadForPeriod(overheadPeriod);
+      return NextResponse.json<ApiResponse>({ success: true, data: { overhead } });
+    }
+
     const [settings, productCosts] = await Promise.all([
       getBusinessSettings(),
       getProductCosts(),
@@ -64,6 +76,25 @@ export async function PUT(request: NextRequest) {
 
       await upsertProductCosts(entries);
 
+      return NextResponse.json<ApiResponse>({ success: true });
+    }
+
+    if (type === "overhead") {
+      const { period, entries } = body as {
+        period: string;
+        entries: { category: string; amount: number; note?: string | null }[];
+      };
+
+      const validCategories = new Set<string>(OVERHEAD_CATEGORIES);
+      const cleaned = entries
+        .filter((e) => validCategories.has(e.category))
+        .map((e) => ({
+          category: e.category as OverheadCategory,
+          amount: Number(e.amount) || 0,
+          note: e.note ?? null,
+        }));
+
+      await upsertOverheadEntries(period, cleaned);
       return NextResponse.json<ApiResponse>({ success: true });
     }
 

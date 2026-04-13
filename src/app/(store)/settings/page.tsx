@@ -1,17 +1,30 @@
 import { Metadata } from "next";
 import Link from "next/link";
-import { getBusinessSettings, getProductCosts } from "@/lib/data/settings";
+import {
+  getBusinessSettings,
+  getProductCosts,
+  getOverheadForPeriod,
+} from "@/lib/data/settings";
 import { SettingsForm } from "./settings-form";
+import { CampaignsSection } from "./campaigns-section";
+import { SettlementsSection } from "./settlements-section";
 
 export const metadata: Metadata = { title: "Parametres · Xanal" };
 export const dynamic = "force-dynamic";
 
 const YELLOW = "#F0B90B";
 
+function currentMonthIso(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+}
+
 export default async function SettingsPage() {
-  const [settings, productCosts] = await Promise.all([
+  const initialPeriod = currentMonthIso();
+  const [settings, productCosts, initialOverhead] = await Promise.all([
     getBusinessSettings(),
     getProductCosts(),
+    getOverheadForPeriod(initialPeriod),
   ]);
 
   return (
@@ -126,7 +139,12 @@ export default async function SettingsPage() {
         <SettingsForm
           initialSettings={settings}
           initialProductCosts={productCosts}
+          initialOverhead={initialOverhead}
         />
+
+        <CampaignsSection initialPeriod={initialPeriod} products={productCosts} />
+
+        <SettlementsSection />
       </main>
     </>
   );
