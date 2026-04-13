@@ -359,6 +359,79 @@ export function computeProductPnl(input: {
   return rows;
 }
 
+/**
+ * Compute investor waterfall position for one deal.
+ *
+ * Per CEO spec (Section 5.3):
+ *   Net profit (or loss) for scope
+ *   → Return capital first
+ *   → Then apply agreed profit share %
+ *
+ * Inputs:
+ *   - capitalDeployed: how much investor put in
+ *   - profitSharePct / lossSharePct: agreed shares (0-100)
+ *   - scopeNetProfit: net profit/loss for the scope (e.g., a product since launch)
+ *   - capitalReturnedTotal: cumulative capital returned to date (from payouts)
+ *   - profitShareTotal: cumulative profit share paid to date (from payouts)
+ *
+ * Returns the investor's current position:
+ *   - capitalOutstanding: still owed in capital
+ *   - investorAccruedShare: share of net P&L (positive if profit, negative if loss)
+ *   - amountStillOwed: total still owed = capitalOutstanding + (accrued − paid profit share if profit)
+ */
+export interface InvestorWaterfallInput {
+  capitalDeployed: number;
+  profitSharePct: number;
+  lossSharePct: number;
+  scopeNetProfit: number;
+  capitalReturnedTotal: number;
+  profitShareTotal: number;
+}
+
+export interface InvestorWaterfallResult {
+  capitalOutstanding: number;        // capital_deployed - capital_returned (clamped to 0)
+  investorAccruedShare: number;       // share of net profit (positive) or loss (negative)
+  profitSharePaid: number;            // cumulative profit share already paid
+  profitShareOwing: number;           // accrued - paid (clamped to 0 if loss)
+  totalOwedNow: number;               // capital outstanding + profit share owing
+  status: "in_capital_repayment" | "in_profit_share" | "settled" | "in_loss";
+}
+
+export function computeInvestorWaterfall(
+  input: InvestorWaterfallInput
+): InvestorWaterfallResult {
+  const capitalOutstanding = Math.max(
+    input.capitalDeployed - input.capitalReturnedTotal,
+    0
+  );
+
+  const isProfit = input.scopeNetProfit >= 0;
+  const sharePct = isProfit ? input.profitSharePct : input.lossSharePct;
+  const investorAccruedShare = (input.scopeNetProfit * sharePct) / 100;
+
+  // Profit share paid (if accrued is negative i.e. loss, we don't track loss "payments")
+  const profitShareOwing = isProfit
+    ? Math.max(investorAccruedShare - input.profitShareTotal, 0)
+    : 0;
+
+  const totalOwedNow = capitalOutstanding + profitShareOwing;
+
+  let status: InvestorWaterfallResult["status"];
+  if (!isProfit) status = "in_loss";
+  else if (capitalOutstanding > 0) status = "in_capital_repayment";
+  else if (profitShareOwing > 0) status = "in_profit_share";
+  else status = "settled";
+
+  return {
+    capitalOutstanding,
+    investorAccruedShare,
+    profitSharePaid: input.profitShareTotal,
+    profitShareOwing,
+    totalOwedNow,
+    status,
+  };
+}
+
 export function computeProductMargins(input: {
   deliveredOrderIds: Set<string>;
   orderItems: OrderItemForMargin[];
