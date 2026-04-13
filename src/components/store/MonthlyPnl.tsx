@@ -98,6 +98,19 @@ function buildWaterfall(d: MonthlyPnlData): WaterfallLine[] {
       detail: d.configuredRevenue > 0 ? fmtPct(d.cmPct) : "—",
       emphasize: "subtotal",
     },
+    {
+      label: "− Depenses publicitaires",
+      amount: -d.adSpend,
+      detail: d.adSpend > 0
+        ? (d.blendedRoas !== null ? `ROAS ${d.blendedRoas.toFixed(2)}x` : "")
+        : "Aucune campagne saisie",
+    },
+    {
+      label: "= CM apres publicite",
+      amount: d.contributionMarginAfterAds,
+      detail: d.configuredRevenue > 0 ? fmtPct(d.cmPctAfterAds) : "—",
+      emphasize: "subtotal",
+    },
     ...d.overhead.map((o) => ({
       label: `− ${o.label}`,
       amount: -o.amount,
@@ -218,6 +231,99 @@ export function MonthlyPnl({ initialPeriod }: Props) {
         </div>
       </div>
 
+      {/* ROAS + CAC summary */}
+      {data && !loading && (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+            gap: 10,
+            marginBottom: 10,
+          }}
+        >
+          <div style={card}>
+            <p style={eyebrow}>Depense publicitaire</p>
+            <p
+              style={{
+                fontFamily: "var(--font-geist-mono), 'Geist Mono', monospace",
+                fontSize: 28,
+                fontWeight: 500,
+                color: data.adSpend > 0 ? "#fff" : "rgba(255,255,255,0.3)",
+                lineHeight: 1,
+              }}
+            >
+              {fmtCurrency(data.adSpend)}
+            </p>
+            <p style={{ fontSize: 11, color: "rgba(255,255,255,0.22)", marginTop: 6 }}>
+              {data.adSpendNoProduct > 0
+                ? `${fmtCurrency(data.adSpendNoProduct)} non mappe`
+                : "Saisie manuelle"}
+            </p>
+          </div>
+          <div style={card}>
+            <p style={eyebrow}>ROAS global</p>
+            <p
+              style={{
+                fontFamily: "var(--font-geist-mono), 'Geist Mono', monospace",
+                fontSize: 28,
+                fontWeight: 500,
+                color:
+                  data.blendedRoas === null
+                    ? "rgba(255,255,255,0.3)"
+                    : data.blendedRoas >= 3.5
+                      ? GREEN
+                      : data.blendedRoas >= 2.5
+                        ? AMBER
+                        : data.blendedRoas >= 2.0
+                          ? "rgba(255,255,255,0.7)"
+                          : RED,
+                lineHeight: 1,
+              }}
+            >
+              {data.blendedRoas === null ? "—" : `${data.blendedRoas.toFixed(2)}x`}
+            </p>
+            <p style={{ fontSize: 11, color: "rgba(255,255,255,0.22)", marginTop: 6 }}>
+              Revenu livre / depense totale
+            </p>
+          </div>
+          <div style={card}>
+            <p style={eyebrow}>CAC</p>
+            <p
+              style={{
+                fontFamily: "var(--font-geist-mono), 'Geist Mono', monospace",
+                fontSize: 28,
+                fontWeight: 500,
+                color: data.cac === null ? "rgba(255,255,255,0.3)" : "#fff",
+                lineHeight: 1,
+              }}
+            >
+              {data.cac === null ? "—" : fmtCurrency(data.cac)}
+            </p>
+            <p style={{ fontSize: 11, color: "rgba(255,255,255,0.22)", marginTop: 6 }}>
+              {data.newCustomers} nouveaux clients
+            </p>
+          </div>
+          <div style={card}>
+            <p style={eyebrow}>Clients livres</p>
+            <p
+              style={{
+                fontFamily: "var(--font-geist-mono), 'Geist Mono', monospace",
+                fontSize: 28,
+                fontWeight: 500,
+                color: "#fff",
+                lineHeight: 1,
+              }}
+            >
+              {data.totalDeliveredCustomers}
+            </p>
+            <p style={{ fontSize: 11, color: "rgba(255,255,255,0.22)", marginTop: 6 }}>
+              {data.newCustomers} nouveaux ·{" "}
+              {data.totalDeliveredCustomers - data.newCustomers} recurrents
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Waterfall */}
       {data && !loading && (
         <div style={card}>
@@ -296,6 +402,106 @@ export function MonthlyPnl({ initialPeriod }: Props) {
           {data.productsMissingCogs > 0 && (
             <p style={{ fontSize: 10, color: AMBER, marginTop: 8, opacity: 0.7 }}>
               {data.productsMissingCogs} produit(s) sans COGS configure. Le profit brut sous-estime la realite.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Per-product ROAS table */}
+      {data && !loading && data.roasPerProduct.length > 0 && (
+        <div style={{ ...card, marginTop: 10 }}>
+          <p style={eyebrow}>ROAS par produit</p>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "minmax(180px, 1.5fr) 110px 110px 100px",
+              gap: 12,
+              padding: "0 0 10px",
+              borderBottom: "1px solid rgba(255,255,255,0.06)",
+            }}
+          >
+            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", fontWeight: 600 }}>
+              PRODUIT
+            </span>
+            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", fontWeight: 600, textAlign: "right" }}>
+              DEPENSE
+            </span>
+            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", fontWeight: 600, textAlign: "right" }}>
+              REVENU LIVRE
+            </span>
+            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", fontWeight: 600, textAlign: "right" }}>
+              ROAS
+            </span>
+          </div>
+          {data.roasPerProduct.map((r) => {
+            const roasColor =
+              r.roas >= 3.5
+                ? GREEN
+                : r.roas >= 2.5
+                  ? AMBER
+                  : r.roas >= 2.0
+                    ? "rgba(255,255,255,0.55)"
+                    : RED;
+            return (
+              <div
+                key={r.productId}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "minmax(180px, 1.5fr) 110px 110px 100px",
+                  gap: 12,
+                  padding: "10px 0",
+                  alignItems: "baseline",
+                  borderBottom: "1px solid rgba(255,255,255,0.03)",
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 13,
+                    color: "rgba(255,255,255,0.7)",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {r.productName ?? r.productId}
+                </span>
+                <span
+                  style={{
+                    fontFamily: "var(--font-geist-mono), 'Geist Mono', monospace",
+                    fontSize: 13,
+                    color: "rgba(255,255,255,0.55)",
+                    textAlign: "right",
+                  }}
+                >
+                  {fmtCurrency(r.spend)}
+                </span>
+                <span
+                  style={{
+                    fontFamily: "var(--font-geist-mono), 'Geist Mono', monospace",
+                    fontSize: 13,
+                    color: YELLOW,
+                    textAlign: "right",
+                  }}
+                >
+                  {fmtCurrency(r.revenue)}
+                </span>
+                <span
+                  style={{
+                    fontFamily: "var(--font-geist-mono), 'Geist Mono', monospace",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: roasColor,
+                    textAlign: "right",
+                  }}
+                >
+                  {r.roas.toFixed(2)}x
+                </span>
+              </div>
+            );
+          })}
+          {data.adSpendNoProduct > 0 && (
+            <p style={{ fontSize: 10, color: AMBER, marginTop: 10, opacity: 0.7 }}>
+              {fmtCurrency(data.adSpendNoProduct)} de depenses non mappes a un produit (inclus dans ROAS global mais pas dans le tableau).
             </p>
           )}
         </div>

@@ -6,6 +6,7 @@ import {
   getOverheadForPeriod,
 } from "@/lib/data/settings";
 import { SettingsForm } from "./settings-form";
+import { CampaignsSection } from "./campaigns-section";
 
 export const metadata: Metadata = { title: "Parametres · Xanal" };
 export const dynamic = "force-dynamic";
@@ -139,6 +140,8 @@ export default async function SettingsPage() {
           initialProductCosts={productCosts}
           initialOverhead={initialOverhead}
         />
+
+        <CampaignsSection initialPeriod={initialPeriod} products={productCosts} />
       </main>
     </>
   );

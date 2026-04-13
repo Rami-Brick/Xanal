@@ -167,6 +167,86 @@ export function computeContributionMargin(
 }
 
 /**
+ * Compute ROAS per product and blended ROAS per CEO spec.
+ *
+ * Per-product formula:
+ *   roas = SUM(delivered_revenue WHERE product_id=X) / SUM(spend WHERE product_id=X)
+ *
+ * Blended formula (for overall business ROAS):
+ *   roas = total_delivered_revenue / total_spend
+ *
+ * Products with no spend mapped get roas = null (cannot compute).
+ * Spend with no product mapped contributes only to blended ROAS.
+ */
+export interface RoasInput {
+  deliveredRevenueByProduct: Map<string, number>;
+  spendByProduct: Map<string, number>;
+  totalDeliveredRevenue: number;
+  totalSpend: number;
+}
+
+export interface ProductRoas {
+  productId: string;
+  revenue: number;
+  spend: number;
+  roas: number; // revenue / spend
+}
+
+export interface RoasResult {
+  blendedRoas: number | null; // null if totalSpend === 0
+  totalSpend: number;
+  perProduct: Map<string, ProductRoas>;
+}
+
+export function computeRoas(input: RoasInput): RoasResult {
+  const perProduct = new Map<string, ProductRoas>();
+
+  // Union of keys from revenue and spend
+  const keys = new Set<string>();
+  for (const k of input.deliveredRevenueByProduct.keys()) keys.add(k);
+  for (const k of input.spendByProduct.keys()) keys.add(k);
+
+  for (const productId of keys) {
+    const revenue = input.deliveredRevenueByProduct.get(productId) ?? 0;
+    const spend = input.spendByProduct.get(productId) ?? 0;
+    if (spend <= 0) continue; // skip products with no spend (ROAS undefined)
+    perProduct.set(productId, {
+      productId,
+      revenue,
+      spend,
+      roas: revenue / spend,
+    });
+  }
+
+  const blendedRoas =
+    input.totalSpend > 0 ? input.totalDeliveredRevenue / input.totalSpend : null;
+
+  return { blendedRoas, totalSpend: input.totalSpend, perProduct };
+}
+
+/**
+ * CAC = total_spend / first_time_delivered_customers
+ *
+ * The caller is responsible for deduping customers by stable identity (phone)
+ * and filtering to those whose first-ever delivered order falls in this period.
+ */
+export interface CacInput {
+  totalSpend: number;
+  newCustomerCount: number;
+}
+
+export interface CacResult {
+  cac: number | null; // null if no customers
+  totalSpend: number;
+  newCustomerCount: number;
+}
+
+export function computeCac(input: CacInput): CacResult {
+  const cac = input.newCustomerCount > 0 ? input.totalSpend / input.newCustomerCount : null;
+  return { cac, totalSpend: input.totalSpend, newCustomerCount: input.newCustomerCount };
+}
+
+/**
  * Compute CPO (Cost Per Delivered Order) per CEO spec.
  *
  * Formula:
