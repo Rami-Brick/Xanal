@@ -4,6 +4,8 @@ import { getStorePageData } from "@/lib/data/store";
 import { StoreActions } from "@/components/store/StoreActions";
 import { TrendChart } from "@/components/store/TrendChart";
 import { MonthlyPnl } from "@/components/store/MonthlyPnl";
+import { CashPositionCards } from "@/components/store/CashPositionCards";
+import { getCashPosition } from "@/lib/data/settlements";
 
 function currentMonthIso(): string {
   const dt = new Date();
@@ -136,7 +138,10 @@ function Bar({
 }
 
 export default async function StorePage() {
-  const d = await getStorePageData();
+  const [d, cashPosition] = await Promise.all([
+    getStorePageData(),
+    getCashPosition(),
+  ]);
   const freshness = FRESHNESS[d.connection.syncFreshness];
   const maxStatus = Math.max(...d.orderBreakdown.byStatus.map((s) => s.count), 1);
   const rv = d.revenueMetrics;
@@ -894,6 +899,29 @@ export default async function StorePage() {
             </p>
           </section>
         )}
+
+        {/* Section 2quater-pre: Tresorerie */}
+        <section>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 16 }}>
+            <p style={{ ...eyebrow, marginBottom: 0 }}>Tresorerie</p>
+            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.22)" }}>
+              Position globale Cosmos
+            </span>
+            <Link
+              href="/settings"
+              style={{
+                fontSize: 11,
+                color: YELLOW,
+                textDecoration: "none",
+                marginLeft: "auto",
+                opacity: 0.7,
+              }}
+            >
+              Gerer les reglements →
+            </Link>
+          </div>
+          <CashPositionCards data={cashPosition} />
+        </section>
 
         {/* Section 2quater: Bilan mensuel */}
         <section>
