@@ -1,4 +1,6 @@
 import { Geist, Geist_Mono } from "next/font/google";
+import { StoreSidebar } from "@/components/nav/StoreSidebar";
+import { SidebarShell } from "@/components/nav/SidebarShell";
 
 const geist = Geist({
   subsets: ["latin"],
@@ -25,7 +27,18 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
         color: "#fff",
       }}
     >
-      {children}
+      <SidebarShell>
+        <StoreSidebar />
+        <main
+          style={{
+            flex: 1,
+            minWidth: 0,
+            minHeight: "100vh",
+          }}
+        >
+          {children}
+        </main>
+      </SidebarShell>
     </div>
   );
 }
