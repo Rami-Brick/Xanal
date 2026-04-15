@@ -1,4 +1,6 @@
 import type { InvestorSummary } from "@/lib/data/investors";
+import { MetricTooltip } from "@/components/ui/MetricTooltip";
+import { METRICS } from "@/components/ui/metric-definitions";
 
 const YELLOW = "#F0B90B";
 const GREEN = "#0ECB81";
@@ -81,7 +83,10 @@ export function InvestorsSummaryCards({ data }: { data: InvestorSummary }) {
         }}
       >
         <div style={card}>
-          <p style={eyebrow}>Capital deploye</p>
+          <p style={{ ...eyebrow, display: "inline-flex", alignItems: "center" }}>
+            Capital deploye
+            <MetricTooltip {...METRICS.investorCapitalDeployed} />
+          </p>
           <p style={bigNum}>{fmtCurrency(data.totalCapitalDeployed)}</p>
           <p style={hint}>
             {data.activeDealsCount} deal{data.activeDealsCount > 1 ? "s" : ""} actif
@@ -89,7 +94,10 @@ export function InvestorsSummaryCards({ data }: { data: InvestorSummary }) {
           </p>
         </div>
         <div style={card}>
-          <p style={eyebrow}>Capital restant du</p>
+          <p style={{ ...eyebrow, display: "inline-flex", alignItems: "center" }}>
+            Capital restant du
+            <MetricTooltip {...METRICS.investorCapitalOwing} />
+          </p>
           <p
             style={{
               ...bigNum,
@@ -102,7 +110,10 @@ export function InvestorsSummaryCards({ data }: { data: InvestorSummary }) {
           <p style={hint}>A retourner aux investisseurs</p>
         </div>
         <div style={card}>
-          <p style={eyebrow}>Profit a verser</p>
+          <p style={{ ...eyebrow, display: "inline-flex", alignItems: "center" }}>
+            Profit a verser
+            <MetricTooltip {...METRICS.investorProfitOwing} />
+          </p>
           <p
             style={{
               ...bigNum,
@@ -115,7 +126,10 @@ export function InvestorsSummaryCards({ data }: { data: InvestorSummary }) {
           <p style={hint}>Part de profit accumulee</p>
         </div>
         <div style={card}>
-          <p style={eyebrow}>Total a payer</p>
+          <p style={{ ...eyebrow, display: "inline-flex", alignItems: "center" }}>
+            Total a payer
+            <MetricTooltip {...METRICS.investorTotalOwed} />
+          </p>
           <p
             style={{
               ...bigNum,

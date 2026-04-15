@@ -1,4 +1,6 @@
 import type { CashPosition } from "@/lib/data/settlements";
+import { MetricTooltip } from "@/components/ui/MetricTooltip";
+import { METRICS } from "@/components/ui/metric-definitions";
 
 const YELLOW = "#F0B90B";
 const GREEN = "#0ECB81";
@@ -74,7 +76,10 @@ export function CashPositionCards({ data }: { data: CashPosition }) {
       }}
     >
       <div style={card}>
-        <p style={eyebrow}>Cash encaisse</p>
+        <p style={{ ...eyebrow, display: "inline-flex", alignItems: "center" }}>
+          Cash encaisse
+          <MetricTooltip {...METRICS.cashCollected} />
+        </p>
         <p style={{ ...bigNum, color: data.totalSettled > 0 ? GREEN : "rgba(255,255,255,0.3)" }}>
           {fmtCurrency(data.totalSettled)}
         </p>
@@ -85,7 +90,10 @@ export function CashPositionCards({ data }: { data: CashPosition }) {
         </p>
       </div>
       <div style={card}>
-        <p style={eyebrow}>Cash en transit</p>
+        <p style={{ ...eyebrow, display: "inline-flex", alignItems: "center" }}>
+          Cash en transit
+          <MetricTooltip {...METRICS.cashInTransit} />
+        </p>
         <p style={{ ...bigNum, color: data.cashInTransit > 0 ? YELLOW : "rgba(255,255,255,0.3)" }}>
           {fmtCurrency(data.cashInTransit)}
         </p>
@@ -107,7 +115,10 @@ export function CashPositionCards({ data }: { data: CashPosition }) {
         </p>
       </div>
       <div style={card}>
-        <p style={eyebrow}>Ecart dernier reglement</p>
+        <p style={{ ...eyebrow, display: "inline-flex", alignItems: "center" }}>
+          Ecart dernier reglement
+          <MetricTooltip {...METRICS.settlementGap} />
+        </p>
         <p style={{ ...bigNum, color: gapColor }}>
           {lastGap === null
             ? "—"

@@ -1,6 +1,8 @@
 import { Metadata } from "next";
 import { getStorePageData } from "@/lib/data/store";
 import { TrendChart } from "@/components/store/TrendChart";
+import { MetricTooltip } from "@/components/ui/MetricTooltip";
+import { METRICS } from "@/components/ui/metric-definitions";
 import { PageShell } from "../../_shared/PageShell";
 import {
   AMBER,
@@ -52,44 +54,53 @@ export default async function PerformancePage() {
             [
               {
                 label: "Revenu livre",
+                tooltipKey: "revenueDelivered",
                 value: fmtCurrency(rv.grossRevenue),
                 sub: `${fmt(d.kpis.deliveredOrders)} commandes livrees`,
                 accent: GREEN,
               },
               {
                 label: "Panier moyen",
+                tooltipKey: "averageBasket",
                 value: fmtCurrency(rv.averageOrderValue),
                 sub: `sur ${fmt(d.kpis.deliveredOrders)} livraisons`,
                 accent: YELLOW,
               },
               {
                 label: "Commandes actives",
+                tooltipKey: "activeOrders",
                 value: fmt(d.kpis.activeOrders),
                 sub: `${pct(d.kpis.activeOrders, d.kpis.validOrders)} des valides`,
                 accent: undefined,
               },
               {
                 label: "Taux de retour",
+                tooltipKey: "returnRateLifetime",
                 value: fmtPct(rv.returnRate),
                 sub: `${fmt(rv.returnNumerator)} retours / ${fmt(rv.returnDenominator)} expediees`,
                 accent: TONE_COLORS[returnRateTone(rv.returnRate)],
               },
               {
                 label: "Taux de confirmation",
+                tooltipKey: "confirmationRate",
                 value: fmtPct(rv.confirmationRate),
                 sub: `${fmt(rv.confirmationNumerator)} / ${fmt(rv.confirmationDenominator)} traitees`,
                 accent: TONE_COLORS[confirmationRateTone(rv.confirmationRate)],
               },
               {
                 label: "Commandes livrees",
+                tooltipKey: "deliveredOrders",
                 value: fmt(d.kpis.deliveredOrders),
                 sub: `${pct(d.kpis.deliveredOrders, d.kpis.validOrders)} des valides`,
                 accent: GREEN,
               },
-            ] as { label: string; value: string; sub: string; accent: string | undefined }[]
-          ).map(({ label, value, sub, accent }) => (
+            ] as { label: string; tooltipKey: keyof typeof METRICS; value: string; sub: string; accent: string | undefined }[]
+          ).map(({ label, tooltipKey, value, sub, accent }) => (
             <div key={label} style={card}>
-              <p style={eyebrow}>{label}</p>
+              <p style={{ ...eyebrow, display: "inline-flex", alignItems: "center" }}>
+                {label}
+                <MetricTooltip {...METRICS[tooltipKey]} />
+              </p>
               <p style={{ ...bigNum, color: accent ?? "#fff" }}>{value}</p>
               <p style={hint}>{sub}</p>
             </div>
@@ -99,7 +110,10 @@ export default async function PerformancePage() {
 
       {/* Section 2: Tendance */}
       <section>
-        <p style={eyebrow}>Tendance</p>
+        <p style={{ ...eyebrow, display: "inline-flex", alignItems: "center" }}>
+          Tendance
+          <MetricTooltip {...METRICS.trend} />
+        </p>
         <TrendChart data={d.dailyTrend} />
       </section>
 
@@ -142,7 +156,10 @@ export default async function PerformancePage() {
           }}
         >
           <div style={card}>
-            <p style={eyebrow}>Profit brut</p>
+            <p style={{ ...eyebrow, display: "inline-flex", alignItems: "center" }}>
+              Profit brut
+              <MetricTooltip {...METRICS.grossProfit} />
+            </p>
             <p
               style={{
                 ...bigNum,
@@ -159,7 +176,10 @@ export default async function PerformancePage() {
             <p style={hint}>Revenu livre moins COGS</p>
           </div>
           <div style={card}>
-            <p style={eyebrow}>Marge brute</p>
+            <p style={{ ...eyebrow, display: "inline-flex", alignItems: "center" }}>
+              Marge brute
+              <MetricTooltip {...METRICS.grossMargin} />
+            </p>
             <p
               style={{
                 ...bigNum,
@@ -178,7 +198,10 @@ export default async function PerformancePage() {
             <p style={hint}>Sur {fmtCurrency(d.margins.configuredRevenue)} configures</p>
           </div>
           <div style={card}>
-            <p style={eyebrow}>CPO</p>
+            <p style={{ ...eyebrow, display: "inline-flex", alignItems: "center" }}>
+              CPO
+              <MetricTooltip {...METRICS.cpo} />
+            </p>
             <p
               style={{
                 ...bigNum,
@@ -197,7 +220,10 @@ export default async function PerformancePage() {
             <p style={hint}>Cout par commande livree</p>
           </div>
           <div style={card}>
-            <p style={eyebrow}>Produits non configures</p>
+            <p style={{ ...eyebrow, display: "inline-flex", alignItems: "center" }}>
+              Produits non configures
+              <MetricTooltip {...METRICS.productsMissingCogs} />
+            </p>
             <p
               style={{
                 ...bigNum,
@@ -221,7 +247,10 @@ export default async function PerformancePage() {
         >
           <div style={{ ...card, display: "flex", flexDirection: "column", gap: 14 }}>
             <div>
-              <p style={eyebrow}>Marge de contribution</p>
+              <p style={{ ...eyebrow, display: "inline-flex", alignItems: "center" }}>
+                Marge de contribution
+                <MetricTooltip {...METRICS.contributionMargin} />
+              </p>
               <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
                 <p
                   style={{
@@ -297,16 +326,19 @@ export default async function PerformancePage() {
               [
                 {
                   label: "Livraison Cosmos",
+                  tooltipKey: "costCosmos",
                   value: d.margins.costBreakdown.deliveryFees,
                   detail: `${fmt(d.kpis.deliveredOrders)} × ${fmtCurrency(d.margins.fees.cosmosDeliveryFee)}`,
                 },
                 {
                   label: "Retours (livraison + frais retour)",
+                  tooltipKey: "costReturns",
                   value: d.margins.costBreakdown.returnBurden,
                   detail: `${fmt(rv.returnNumerator)} × ${fmtCurrency(d.margins.fees.cosmosDeliveryFee + d.margins.fees.cosmosReturnFee)}`,
                 },
                 {
                   label: "Emballage",
+                  tooltipKey: "costPacking",
                   value: d.margins.costBreakdown.packingCosts,
                   detail:
                     d.margins.fees.packingCostPerPackage > 0
@@ -315,11 +347,12 @@ export default async function PerformancePage() {
                 },
                 {
                   label: "Commission Converty",
+                  tooltipKey: "costConverty",
                   value: d.margins.costBreakdown.convertyFees,
                   detail: `${(d.margins.fees.convertyFeeRate * 100).toFixed(2)} % sur le total`,
                 },
-              ] as { label: string; value: number; detail: string }[]
-            ).map(({ label, value, detail }, i, arr) => {
+              ] as { label: string; tooltipKey: keyof typeof METRICS; value: number; detail: string }[]
+            ).map(({ label, tooltipKey, value, detail }, i, arr) => {
               const max = Math.max(...arr.map((x) => x.value), 1);
               const w = (value / max) * 100;
               return (
@@ -332,7 +365,10 @@ export default async function PerformancePage() {
                       gap: 8,
                     }}
                   >
-                    <span style={{ fontSize: 12, color: "rgba(255,255,255,0.55)" }}>{label}</span>
+                    <span style={{ display: "inline-flex", alignItems: "center", fontSize: 12, color: "rgba(255,255,255,0.55)" }}>
+                      {label}
+                      <MetricTooltip {...METRICS[tooltipKey]} />
+                    </span>
                     <span
                       style={{
                         fontFamily: "var(--font-geist-mono), 'Geist Mono', monospace",
@@ -383,7 +419,10 @@ export default async function PerformancePage() {
       {d.productPnl.length > 0 && (
         <section>
           <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 16 }}>
-            <p style={{ ...eyebrow, marginBottom: 0 }}>P&amp;L par produit</p>
+            <span style={{ display: "inline-flex", alignItems: "center" }}>
+              <p style={{ ...eyebrow, marginBottom: 0 }}>P&amp;L par produit</p>
+              <MetricTooltip {...METRICS.pnlProduct} />
+            </span>
             <span style={{ fontSize: 11, color: "rgba(255,255,255,0.22)" }}>
               Kill / keep · tri par revenu livre
             </span>
