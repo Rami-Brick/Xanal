@@ -42,7 +42,7 @@ export default async function OperationsPage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "1fr minmax(260px, 300px)",
+            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
             gap: 10,
           }}
         >

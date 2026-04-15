@@ -93,7 +93,7 @@ export default async function OrdersPage() {
         ))}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+      <div className="stack-mobile" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <div style={{ ...card, padding: "24px 28px" }}>
           <p style={{ ...eyebrow, marginBottom: 20 }}>Répartition par statut</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>

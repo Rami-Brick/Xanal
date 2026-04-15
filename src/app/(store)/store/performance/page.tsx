@@ -214,7 +214,7 @@ export default async function PerformancePage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "minmax(280px, 1fr) minmax(320px, 1.2fr)",
+            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
             gap: 10,
             marginTop: 10,
           }}
@@ -388,7 +388,7 @@ export default async function PerformancePage() {
               Kill / keep · tri par revenu livre
             </span>
           </div>
-          <div style={{ ...card, padding: "0" }}>
+          <div style={{ ...card, padding: "0", overflowX: "auto" }}>
             <div
               style={{
                 display: "grid",
@@ -396,6 +396,7 @@ export default async function PerformancePage() {
                 gap: 12,
                 padding: "14px 20px",
                 borderBottom: "1px solid rgba(255,255,255,0.06)",
+                minWidth: 680,
               }}
             >
               <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", fontWeight: 600 }}>
@@ -474,6 +475,7 @@ export default async function PerformancePage() {
                     alignItems: "center",
                     borderBottom: "1px solid rgba(255,255,255,0.03)",
                     background: cmBold ? "rgba(246,70,93,0.04)" : "transparent",
+                    minWidth: 680,
                   }}
                 >
                   <div

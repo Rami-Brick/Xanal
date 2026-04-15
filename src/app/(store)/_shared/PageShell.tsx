@@ -28,15 +28,26 @@ export function PageShell({
 
   return (
     <div
+      className="page-shell"
       style={{
         maxWidth: 1200,
         margin: "0 auto",
-        padding: "40px 40px 96px",
         display: "flex",
         flexDirection: "column",
-        gap: 40,
       }}
     >
+      <style>{`
+        .page-shell {
+          padding: 40px 40px 96px;
+          gap: 40px;
+        }
+        @media (max-width: 767px) {
+          .page-shell {
+            padding: 20px 16px 64px;
+            gap: 28px;
+          }
+        }
+      `}</style>
       <header
         style={{
           display: "flex",
@@ -60,9 +71,9 @@ export function PageShell({
             {eyebrow}
           </p>
           <h1
+            className="page-shell-title"
             style={{
               fontFamily: "var(--font-geist), system-ui, sans-serif",
-              fontSize: 34,
               fontWeight: 600,
               lineHeight: 1.05,
               letterSpacing: "-0.02em",
@@ -72,6 +83,12 @@ export function PageShell({
           >
             {title}
           </h1>
+          <style>{`
+            .page-shell-title { font-size: 34px; }
+            @media (max-width: 767px) {
+              .page-shell-title { font-size: 26px; }
+            }
+          `}</style>
 
           {(freshness || storeId) && (
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>

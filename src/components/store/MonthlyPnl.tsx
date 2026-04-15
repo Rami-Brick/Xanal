@@ -159,7 +159,7 @@ export function MonthlyPnl({ initialPeriod }: Props) {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "minmax(220px, 1fr) minmax(280px, 1.2fr)",
+          gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
           gap: 10,
           marginBottom: 10,
         }}
@@ -348,7 +348,7 @@ export function MonthlyPnl({ initialPeriod }: Props) {
                   key={i}
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "minmax(220px, 1fr) 100px 160px",
+                    gridTemplateColumns: "minmax(120px, 1fr) minmax(60px, 100px) minmax(110px, 160px)",
                     gap: 16,
                     padding: isFinal ? "16px 0" : isSubtotal ? "12px 0" : "8px 0",
                     borderTop:
@@ -411,6 +411,7 @@ export function MonthlyPnl({ initialPeriod }: Props) {
       {data && !loading && data.roasPerProduct.length > 0 && (
         <div style={{ ...card, marginTop: 10 }}>
           <p style={eyebrow}>ROAS par produit</p>
+          <div className="scroll-x">
           <div
             style={{
               display: "grid",
@@ -418,6 +419,7 @@ export function MonthlyPnl({ initialPeriod }: Props) {
               gap: 12,
               padding: "0 0 10px",
               borderBottom: "1px solid rgba(255,255,255,0.06)",
+              minWidth: 560,
             }}
           >
             <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", fontWeight: 600 }}>
@@ -452,6 +454,7 @@ export function MonthlyPnl({ initialPeriod }: Props) {
                   padding: "10px 0",
                   alignItems: "baseline",
                   borderBottom: "1px solid rgba(255,255,255,0.03)",
+                  minWidth: 560,
                 }}
               >
                 <span
@@ -499,6 +502,7 @@ export function MonthlyPnl({ initialPeriod }: Props) {
               </div>
             );
           })}
+          </div>
           {data.adSpendNoProduct > 0 && (
             <p style={{ fontSize: 10, color: AMBER, marginTop: 10, opacity: 0.7 }}>
               {fmtCurrency(data.adSpendNoProduct)} de depenses non mappes a un produit (inclus dans ROAS global mais pas dans le tableau).

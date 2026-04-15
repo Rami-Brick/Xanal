@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SidebarNavLink } from "./SidebarNavLink";
 import { SidebarSyncActions } from "./SidebarSyncActions";
+import { SyncFreshnessChip } from "@/components/sync/SyncFreshnessChip";
 import { getConnectionStatus } from "@/lib/data/connection";
 
 const YELLOW = "#F0B90B";
@@ -184,6 +185,9 @@ export async function StoreSidebar() {
         >
           Synchronisation
         </p>
+        <div style={{ padding: "0 2px 8px" }}>
+          <SyncFreshnessChip variant="dark" />
+        </div>
         <SidebarSyncActions connected={connection.connected} />
       </div>
 

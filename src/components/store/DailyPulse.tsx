@@ -120,9 +120,10 @@ export function DailyPulse({ data }: { data: DailyPulseData }) {
         </div>
 
         <div
+          className="scroll-x"
           style={{
             display: "grid",
-            gridTemplateColumns: `repeat(${steps.length}, 1fr)`,
+            gridTemplateColumns: `repeat(${steps.length}, minmax(90px, 1fr))`,
             gap: 8,
             alignItems: "stretch",
           }}
@@ -235,7 +236,7 @@ export function DailyPulse({ data }: { data: DailyPulseData }) {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "minmax(220px, 1fr) minmax(220px, 1fr) minmax(280px, 1.5fr)",
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
           gap: 10,
         }}
       >

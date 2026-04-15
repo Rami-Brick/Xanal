@@ -467,13 +467,15 @@ export function InvestorsSection({ products }: Props) {
             const dealPayouts = payouts[d.id] ?? [];
             return (
               <div key={d.id} style={{ ...card, padding: "20px 24px" }}>
-                {/* Top row */}
+                {/* Top row — scrolls horizontally on narrow viewports */}
+                <div className="scroll-x">
                 <div
                   style={{
                     display: "grid",
                     gridTemplateColumns: "1.5fr 1fr 1fr 1fr auto auto auto",
                     gap: 14,
                     alignItems: "center",
+                    minWidth: 720,
                   }}
                 >
                   <div>
@@ -570,10 +572,12 @@ export function InvestorsSection({ products }: Props) {
                     Supprimer
                   </button>
                 </div>
+                </div>
 
                 {/* Expanded waterfall + payouts */}
                 {isExpanded && (
                   <div
+                    className="stack-mobile"
                     style={{
                       marginTop: 20,
                       paddingTop: 20,

@@ -130,7 +130,7 @@ export function InvestorsSummaryCards({ data }: { data: InvestorSummary }) {
 
       {/* Per-deal table */}
       {data.deals.length > 0 && (
-        <div style={{ ...card, padding: "0" }}>
+        <div className="scroll-x" style={{ ...card, padding: "0" }}>
           {/* Header */}
           <div
             style={{
@@ -143,6 +143,7 @@ export function InvestorsSummaryCards({ data }: { data: InvestorSummary }) {
               fontWeight: 600,
               letterSpacing: "0.08em",
               color: "rgba(255,255,255,0.3)",
+              minWidth: 720,
             }}
           >
             <span>INVESTISSEUR</span>
@@ -163,6 +164,7 @@ export function InvestorsSummaryCards({ data }: { data: InvestorSummary }) {
                 alignItems: "center",
                 borderBottom: "1px solid rgba(255,255,255,0.03)",
                 opacity: d.status === "closed" ? 0.5 : 1,
+                minWidth: 720,
               }}
             >
               <span
