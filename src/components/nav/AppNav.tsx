@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogoutButton } from "@/components/auth/LogoutButton";
+import { SyncFreshnessChip } from "@/components/sync/SyncFreshnessChip";
 
 const NAV_ITEMS = [
   { href: "/store", label: "Ma boutique" },
@@ -97,8 +98,9 @@ export function AppNav() {
           })}
         </nav>
 
-        {/* Logout */}
-        <div style={{ flexShrink: 0 }}>
+        {/* Freshness + logout */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+          <SyncFreshnessChip variant="dark" />
           <LogoutButton variant="nav" />
         </div>
       </div>

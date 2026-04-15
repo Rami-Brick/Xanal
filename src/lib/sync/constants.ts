@@ -17,3 +17,6 @@ export const STORE_WATCH_STALE_MS = 6 * 60 * 60 * 1000; // 6 hours
 
 /** Tab-level guard: don't re-trigger background sync within this window */
 export const TAB_GUARD_MS = 5 * 60 * 1000; // 5 minutes
+
+/** How often the background sync provider re-checks freshness while the tab is visible */
+export const BACKGROUND_SYNC_POLL_MS = 60 * 1000; // 60 seconds

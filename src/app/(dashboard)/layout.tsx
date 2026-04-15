@@ -1,5 +1,4 @@
 import { AppNav } from "@/components/nav/AppNav";
-import { BackgroundSync } from "@/components/sync/BackgroundSync";
 
 export default function DashboardLayout({
   children,
@@ -17,7 +16,6 @@ export default function DashboardLayout({
       }}
     >
       <AppNav />
-      <BackgroundSync />
       <main
         style={{
           maxWidth: 1200,
