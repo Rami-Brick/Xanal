@@ -428,7 +428,7 @@ export function SettlementsSection() {
             Aucun reglement enregistre.
           </p>
         ) : (
-          <div>
+          <div className="scroll-x">
             {/* Header */}
             <div
               style={{
@@ -441,6 +441,7 @@ export function SettlementsSection() {
                 fontWeight: 600,
                 color: "rgba(255,255,255,0.3)",
                 letterSpacing: "0.08em",
+                minWidth: 760,
               }}
             >
               <span>DATE</span>
@@ -468,6 +469,7 @@ export function SettlementsSection() {
                     padding: "10px 0",
                     alignItems: "center",
                     borderBottom: "1px solid rgba(255,255,255,0.03)",
+                    minWidth: 760,
                   }}
                 >
                   <span style={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }}>

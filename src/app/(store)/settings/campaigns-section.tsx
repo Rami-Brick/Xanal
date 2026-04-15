@@ -279,6 +279,7 @@ export function CampaignsSection({ initialPeriod, products }: Props) {
           {editId ? "Modifier la campagne" : "Ajouter une campagne"}
         </p>
         <div
+          className="stack-mobile"
           style={{
             display: "grid",
             gridTemplateColumns: "minmax(200px,2fr) 140px 1fr auto",
@@ -371,6 +372,7 @@ export function CampaignsSection({ initialPeriod, products }: Props) {
           ...card,
           display: "flex",
           alignItems: "center",
+          flexWrap: "wrap",
           gap: 20,
           marginBottom: 10,
         }}
@@ -381,7 +383,7 @@ export function CampaignsSection({ initialPeriod, products }: Props) {
             type="month"
             value={period}
             onChange={(e) => setPeriod(e.target.value)}
-            style={{ ...inputStyle, width: 180, colorScheme: "dark" }}
+            style={{ ...inputStyle, width: 180, maxWidth: "100%", colorScheme: "dark" }}
           />
         </div>
         <div style={{ marginLeft: "auto", textAlign: "right" }}>
@@ -423,13 +425,13 @@ export function CampaignsSection({ initialPeriod, products }: Props) {
               <div key={c.id} style={{ ...card, padding: "18px 22px" }}>
                 <div
                   style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr auto auto auto auto",
+                    display: "flex",
+                    flexWrap: "wrap",
                     gap: 14,
                     alignItems: "center",
                   }}
                 >
-                  <div>
+                  <div style={{ flex: "1 1 200px", minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <span
                         style={{

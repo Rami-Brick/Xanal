@@ -17,12 +17,22 @@ export default function DashboardLayout({
     >
       <AppNav />
       <main
+        className="dashboard-main"
         style={{
           maxWidth: 1200,
           margin: "0 auto",
           padding: "32px 24px 64px",
         }}
       >
+        <style>{`
+          @media (max-width: 767px) {
+            .dashboard-main {
+              padding-top: 112px !important;
+              padding-left: 16px !important;
+              padding-right: 16px !important;
+            }
+          }
+        `}</style>
         {children}
       </main>
     </div>

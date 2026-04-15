@@ -156,9 +156,11 @@ export function SidebarShell({ children }: { children: React.ReactNode }) {
 
         @media (max-width: 767px) {
           .xs-topbar {
-            position: sticky;
+            position: fixed;
             top: 0;
-            z-index: 30;
+            left: 0;
+            right: 0;
+            z-index: 55;
             height: 52px;
             background: #111111;
             border-bottom: 1px solid rgba(255,255,255,0.06);
@@ -170,6 +172,7 @@ export function SidebarShell({ children }: { children: React.ReactNode }) {
 
           .xs-layout {
             display: block;
+            padding-top: 52px;
           }
 
           .xs-sidebar {

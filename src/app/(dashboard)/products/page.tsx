@@ -135,7 +135,7 @@ export default async function ProductsPage() {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+      <div className="stack-mobile" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <div style={{ ...card, padding: "24px 28px" }}>
           <p style={{ ...eyebrow, marginBottom: 4 }}>Par commandes totales</p>
           <p style={{ fontSize: 12, color: "rgba(255,255,255,0.2)", marginBottom: 16 }}>Toutes commandes réelles confondues</p>

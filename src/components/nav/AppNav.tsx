@@ -18,6 +18,7 @@ export function AppNav() {
 
   return (
     <header
+      className="app-nav-header"
       style={{
         position: "sticky",
         top: 0,
@@ -27,20 +28,59 @@ export function AppNav() {
         fontFamily: "'Inter', system-ui, sans-serif",
       }}
     >
+      <style>{`
+        @media (max-width: 767px) {
+          .app-nav-header {
+            position: fixed !important;
+            left: 0;
+            right: 0;
+            top: 0;
+          }
+        }
+      `}</style>
       <div
+        className="app-nav-row"
         style={{
           maxWidth: 1200,
           margin: "0 auto",
-          padding: "0 24px",
-          height: 52,
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          gap: 24,
+          gap: 16,
         }}
       >
+        <style>{`
+          .app-nav-row {
+            padding: 0 24px;
+            height: 52px;
+          }
+          .app-nav-links {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            min-width: 0;
+            overflow-x: auto;
+            scrollbar-width: none;
+          }
+          .app-nav-links::-webkit-scrollbar { display: none; }
+          @media (max-width: 767px) {
+            .app-nav-row {
+              padding: 8px 14px;
+              height: auto;
+              flex-wrap: wrap;
+              gap: 10px;
+            }
+            .app-nav-links {
+              order: 3;
+              width: 100%;
+              padding-bottom: 2px;
+            }
+            .app-nav-brand { flex-shrink: 0; }
+            .app-nav-trailing { margin-left: auto; }
+          }
+        `}</style>
         {/* Brand */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+        <div className="app-nav-brand" style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
           <div
             style={{
               width: 22,
@@ -72,7 +112,7 @@ export function AppNav() {
         </div>
 
         {/* Nav links */}
-        <nav style={{ display: "flex", alignItems: "center", gap: 2 }}>
+        <nav className="app-nav-links">
           {NAV_ITEMS.map(({ href, label }) => {
             const active = pathname === href;
             return (
@@ -99,7 +139,7 @@ export function AppNav() {
         </nav>
 
         {/* Freshness + logout */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+        <div className="app-nav-trailing" style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
           <SyncFreshnessChip variant="dark" />
           <LogoutButton variant="nav" />
         </div>

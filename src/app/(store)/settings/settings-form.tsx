@@ -374,7 +374,7 @@ export function SettingsForm({
               Aucun produit synchronise
             </p>
           ) : (
-            <>
+            <div className="scroll-x">
               {/* Table header */}
               <div
                 style={{
@@ -384,6 +384,7 @@ export function SettingsForm({
                   padding: "0 0 10px",
                   borderBottom: "1px solid rgba(255,255,255,0.06)",
                   marginBottom: 8,
+                  minWidth: 520,
                 }}
               >
                 <span style={{ fontSize: 10, color: "rgba(255,255,255,0.25)", fontWeight: 600 }}>
@@ -447,6 +448,7 @@ export function SettingsForm({
                         alignItems: "center",
                         padding: "8px 0",
                         borderBottom: "1px solid rgba(255,255,255,0.03)",
+                        minWidth: 520,
                       }}
                     >
                       <span
@@ -522,7 +524,7 @@ export function SettingsForm({
                   <span style={{ fontSize: 12, color: RED }}>Erreur</span>
                 )}
               </div>
-            </>
+            </div>
           )}
         </div>
       </section>
@@ -541,6 +543,7 @@ export function SettingsForm({
             style={{
               display: "flex",
               alignItems: "center",
+              flexWrap: "wrap",
               gap: 16,
               marginBottom: 24,
               paddingBottom: 20,
@@ -552,7 +555,7 @@ export function SettingsForm({
               type="month"
               value={overheadPeriod}
               onChange={(e) => setOverheadPeriod(e.target.value)}
-              style={{ ...inputStyle, width: 180 }}
+              style={{ ...inputStyle, width: 180, maxWidth: "100%" }}
             />
             {overheadLoading && (
               <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>Chargement...</span>

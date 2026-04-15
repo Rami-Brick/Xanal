@@ -103,7 +103,7 @@ export default async function DashboardPage() {
         ))}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 12 }}>
+      <div className="stack-mobile" style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 12 }}>
         <div style={{ ...card, padding: "24px 28px" }}>
           <p style={{ ...eyebrow, marginBottom: 20 }}>Répartition par statut</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>

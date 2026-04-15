@@ -83,7 +83,7 @@ export default async function SyncPage() {
       </div>
 
       {/* Stores + actions */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 400px", gap: 12 }}>
+      <div className="stack-mobile" style={{ display: "grid", gridTemplateColumns: "1fr 400px", gap: 12 }}>
 
         {/* Store health */}
         <div style={{ ...card, padding: "24px 28px" }}>
@@ -185,7 +185,7 @@ export default async function SyncPage() {
         {d.recentLogs.length === 0 ? (
           <p style={{ fontSize: 13, color: "rgba(255,255,255,0.25)" }}>Aucun log disponible.</p>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+          <div className="scroll-x" style={{ display: "flex", flexDirection: "column", gap: 0 }}>
             {/* Header */}
             <div style={{
               display: "grid",
@@ -193,6 +193,7 @@ export default async function SyncPage() {
               gap: "0 16px",
               padding: "0 0 10px",
               borderBottom: "1px solid rgba(255,255,255,0.06)",
+              minWidth: 720,
             }}>
               {["Démarré à", "Type", "Statut", "Créés", "MAJ", "Boutique"].map((h) => (
                 <span key={h} style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.22)" }}>{h}</span>
@@ -213,6 +214,7 @@ export default async function SyncPage() {
                     padding: "10px 0",
                     borderBottom: "1px solid rgba(255,255,255,0.04)",
                     alignItems: "center",
+                    minWidth: 720,
                   }}
                 >
                   <span style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>{formatDate(log.started_at)}</span>

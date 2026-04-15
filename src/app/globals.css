@@ -123,8 +123,25 @@
   }
   body {
     @apply bg-background text-foreground;
+    overflow-x: clip;
   }
   html {
     @apply font-sans;
+  }
+}
+
+/* Responsive helpers — applied inline via className on problematic containers.
+   Kept in globals so mobile fixes don't require a <style> block per page. */
+.scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.scroll-x::-webkit-scrollbar { height: 6px; }
+.scroll-x::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 3px; }
+
+@media (max-width: 767px) {
+  /* Force any 2-col grid with this class to stack */
+  .stack-mobile {
+    grid-template-columns: 1fr !important;
   }
 }
