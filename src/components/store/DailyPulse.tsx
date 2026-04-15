@@ -1,4 +1,6 @@
 import type { DailyPulseData } from "@/lib/data/daily-pulse";
+import { MetricTooltip } from "@/components/ui/MetricTooltip";
+import { METRICS } from "@/components/ui/metric-definitions";
 
 const YELLOW = "#F0B90B";
 const GREEN = "#0ECB81";
@@ -101,13 +103,18 @@ export function DailyPulse({ data }: { data: DailyPulseData }) {
       {/* Pipeline strip */}
       <div style={{ ...card, marginBottom: 10 }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 14 }}>
-          <p style={{ ...eyebrow, marginBottom: 0 }}>Pipeline du jour</p>
+          <span style={{ display: "inline-flex", alignItems: "center" }}>
+            <p style={{ ...eyebrow, marginBottom: 0 }}>Pipeline du jour</p>
+            <MetricTooltip {...METRICS.pipelineToday} />
+          </span>
           <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)" }}>
             {fmt(data.today.total)} commandes · {fmtCurrency(data.today.totalRevenuePotential)} potentiel
           </span>
           {orderDelta && (
             <span
               style={{
+                display: "inline-flex",
+                alignItems: "center",
                 fontSize: 11,
                 fontWeight: 600,
                 color: TONE_COLORS[orderDelta.tone],
@@ -115,6 +122,7 @@ export function DailyPulse({ data }: { data: DailyPulseData }) {
               }}
             >
               {orderDelta.label} vs hier
+              <MetricTooltip {...METRICS.deltaVsYesterday} />
             </span>
           )}
         </div>
@@ -242,7 +250,10 @@ export function DailyPulse({ data }: { data: DailyPulseData }) {
       >
         {/* Return rate (rolling 7d) */}
         <div style={card}>
-          <p style={eyebrow}>Taux retour 7j</p>
+          <p style={{ ...eyebrow, display: "inline-flex", alignItems: "center" }}>
+            Taux retour 7j
+            <MetricTooltip {...METRICS.returnRate7d} />
+          </p>
           <p
             style={{
               fontFamily: "var(--font-geist-mono), 'Geist Mono', monospace",
@@ -262,7 +273,10 @@ export function DailyPulse({ data }: { data: DailyPulseData }) {
 
         {/* Ad spend today */}
         <div style={card}>
-          <p style={eyebrow}>Depenses pubs (jour)</p>
+          <p style={{ ...eyebrow, display: "inline-flex", alignItems: "center" }}>
+            Depenses pubs (jour)
+            <MetricTooltip {...METRICS.adSpendToday} />
+          </p>
           <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
             <p
               style={{
@@ -294,7 +308,10 @@ export function DailyPulse({ data }: { data: DailyPulseData }) {
 
         {/* Per-campaign ROAS today */}
         <div style={card}>
-          <p style={eyebrow}>ROAS du jour</p>
+          <p style={{ ...eyebrow, display: "inline-flex", alignItems: "center" }}>
+            ROAS du jour
+            <MetricTooltip {...METRICS.roasToday} />
+          </p>
           {data.todayCampaigns.length === 0 ? (
             <p style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", marginTop: 6 }}>
               Aucune depense publicitaire aujourd&apos;hui

@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import type { MonthlyPnlData } from "@/lib/data/monthly-pnl";
+import { MetricTooltip } from "@/components/ui/MetricTooltip";
+import { METRICS } from "@/components/ui/metric-definitions";
 
 const YELLOW = "#F0B90B";
 const GREEN = "#0ECB81";
@@ -191,7 +193,10 @@ export function MonthlyPnl({ initialPeriod }: Props) {
         </div>
 
         <div style={card}>
-          <p style={eyebrow}>Profit net du mois</p>
+          <p style={{ ...eyebrow, display: "inline-flex", alignItems: "center" }}>
+            Profit net du mois
+            <MetricTooltip {...METRICS.netProfitMonth} />
+          </p>
           {loading ? (
             <p style={{ fontSize: 14, color: "rgba(255,255,255,0.3)" }}>Chargement...</p>
           ) : error ? (
@@ -242,7 +247,10 @@ export function MonthlyPnl({ initialPeriod }: Props) {
           }}
         >
           <div style={card}>
-            <p style={eyebrow}>Depense publicitaire</p>
+            <p style={{ ...eyebrow, display: "inline-flex", alignItems: "center" }}>
+              Depense publicitaire
+              <MetricTooltip {...METRICS.adSpendMonth} />
+            </p>
             <p
               style={{
                 fontFamily: "var(--font-geist-mono), 'Geist Mono', monospace",
@@ -261,7 +269,10 @@ export function MonthlyPnl({ initialPeriod }: Props) {
             </p>
           </div>
           <div style={card}>
-            <p style={eyebrow}>ROAS global</p>
+            <p style={{ ...eyebrow, display: "inline-flex", alignItems: "center" }}>
+              ROAS global
+              <MetricTooltip {...METRICS.roasGlobal} />
+            </p>
             <p
               style={{
                 fontFamily: "var(--font-geist-mono), 'Geist Mono', monospace",
@@ -287,7 +298,10 @@ export function MonthlyPnl({ initialPeriod }: Props) {
             </p>
           </div>
           <div style={card}>
-            <p style={eyebrow}>CAC</p>
+            <p style={{ ...eyebrow, display: "inline-flex", alignItems: "center" }}>
+              CAC
+              <MetricTooltip {...METRICS.cac} />
+            </p>
             <p
               style={{
                 fontFamily: "var(--font-geist-mono), 'Geist Mono', monospace",
@@ -304,7 +318,10 @@ export function MonthlyPnl({ initialPeriod }: Props) {
             </p>
           </div>
           <div style={card}>
-            <p style={eyebrow}>Clients livres</p>
+            <p style={{ ...eyebrow, display: "inline-flex", alignItems: "center" }}>
+              Clients livres
+              <MetricTooltip {...METRICS.deliveredCustomers} />
+            </p>
             <p
               style={{
                 fontFamily: "var(--font-geist-mono), 'Geist Mono', monospace",

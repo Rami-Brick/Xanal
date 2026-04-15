@@ -1,5 +1,7 @@
 import { Metadata } from "next";
 import { getStorePageData } from "@/lib/data/store";
+import { MetricTooltip } from "@/components/ui/MetricTooltip";
+import { METRICS } from "@/components/ui/metric-definitions";
 import { PageShell } from "../../_shared/PageShell";
 import { Bar } from "../../_shared/Bar";
 import {
@@ -50,6 +52,8 @@ export default async function OperationsPage() {
           <div style={{ ...card, padding: "24px 26px" }}>
             <p
               style={{
+                display: "inline-flex",
+                alignItems: "center",
                 fontSize: 11,
                 fontWeight: 500,
                 color: "rgba(255,255,255,0.35)",
@@ -58,6 +62,7 @@ export default async function OperationsPage() {
               }}
             >
               Repartition par statut
+              <MetricTooltip {...METRICS.pipelineBreakdown} />
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
               {d.orderBreakdown.byStatus.map(({ label, count }) => (
@@ -93,7 +98,10 @@ export default async function OperationsPage() {
           {/* Active/Terminal + Terminal outcomes */}
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <div style={{ ...card, flex: 1 }}>
-              <p style={eyebrow}>Actif / Terminal</p>
+              <p style={{ ...eyebrow, display: "inline-flex", alignItems: "center" }}>
+                Actif / Terminal
+                <MetricTooltip {...METRICS.activeTerminalSplit} />
+              </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                 {d.orderBreakdown.activeVsTerminal.map(({ label, count, pct: p }) => (
                   <div key={label}>
@@ -147,7 +155,10 @@ export default async function OperationsPage() {
             </div>
 
             <div style={{ ...card, flex: 1 }}>
-              <p style={eyebrow}>Resultats terminaux</p>
+              <p style={{ ...eyebrow, display: "inline-flex", alignItems: "center" }}>
+                Resultats terminaux
+                <MetricTooltip {...METRICS.terminalOutcomes} />
+              </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                 {d.orderBreakdown.deliveredVsReturnedVsRejected.map(
                   ({ label, count, pct: p }) => {
@@ -227,6 +238,8 @@ export default async function OperationsPage() {
           <div style={{ ...card, padding: "24px 26px" }}>
             <p
               style={{
+                display: "inline-flex",
+                alignItems: "center",
                 fontSize: 11,
                 fontWeight: 500,
                 color: "rgba(255,255,255,0.35)",
@@ -235,6 +248,7 @@ export default async function OperationsPage() {
               }}
             >
               <span style={{ color: YELLOW }}>● </span>Revenu par produit
+              <MetricTooltip {...METRICS.topByRevenue} />
             </p>
             <p style={{ fontSize: 11, color: "rgba(255,255,255,0.18)", marginBottom: 18 }}>
               Commandes livrees uniquement
@@ -320,6 +334,8 @@ export default async function OperationsPage() {
           <div style={{ ...card, padding: "24px 26px" }}>
             <p
               style={{
+                display: "inline-flex",
+                alignItems: "center",
                 fontSize: 11,
                 fontWeight: 500,
                 color: "rgba(255,255,255,0.35)",
@@ -328,6 +344,7 @@ export default async function OperationsPage() {
               }}
             >
               Volume de commandes
+              <MetricTooltip {...METRICS.topByOrders} />
             </p>
             <p style={{ fontSize: 11, color: "rgba(255,255,255,0.18)", marginBottom: 18 }}>
               Commandes valides hors supprimees
@@ -390,6 +407,8 @@ export default async function OperationsPage() {
           <div style={{ ...card, padding: "24px 26px" }}>
             <p
               style={{
+                display: "inline-flex",
+                alignItems: "center",
                 fontSize: 11,
                 fontWeight: 500,
                 color: "rgba(255,255,255,0.35)",
@@ -398,6 +417,7 @@ export default async function OperationsPage() {
               }}
             >
               <span style={{ color: GREEN }}>● </span>Livraisons confirmees
+              <MetricTooltip {...METRICS.topByDeliveries} />
             </p>
             <p style={{ fontSize: 11, color: "rgba(255,255,255,0.18)", marginBottom: 18 }}>
               Commandes valides livrees
