@@ -267,39 +267,39 @@ npm = profit_net / revenu_livre × 100`,
     notes: "Cible > 5 %. Alerte < 3 %. Critique négatif (perte exacte en rouge).",
   },
 
-  adSpendMonth: {
+  adSpendPeriod: {
     meaning:
-      "Dépenses publicitaires totales du mois saisies dans /settings > Campagnes. Le sous-label signale les dépenses non rattachées à un produit.",
-    formula: `depense_pub_mois =
+      "Dépenses publicitaires saisies sur la période sélectionnée (Du → Au). Le sous-label signale les dépenses non rattachées à un produit.",
+    formula: `depense_pub_periode =
   SUM(campaign_spend.amount)
-  WHERE spend_date IN month`,
+  WHERE spend_date ∈ [from, to]`,
   },
 
   roasGlobal: {
     meaning:
-      "ROAS global du mois : revenu livré total divisé par les dépenses pub totales. Vue agrégée de l'efficacité publicitaire.",
-    formula: `roas = revenu_livre_mois
-     / depense_pub_mois`,
+      "ROAS global sur la période sélectionnée : revenu livré total divisé par les dépenses pub totales. Vue agrégée de l'efficacité publicitaire.",
+    formula: `roas = revenu_livre_periode
+     / depense_pub_periode`,
     notes: "Cible ≥ 3.5×. Surveillance 2.0–3.5×. Pause < 2.0×.",
   },
 
   cac: {
     meaning:
-      "Customer Acquisition Cost : dépense publicitaire par nouveau client payant. Un client est « nouveau » si sa PREMIÈRE livraison (tous temps confondus) tombe dans le mois sélectionné.",
+      "Customer Acquisition Cost : dépense publicitaire par nouveau client payant. Un client est « nouveau » si sa PREMIÈRE livraison (tous temps confondus) tombe dans la période sélectionnée.",
     formula: `nouveaux = COUNT(DISTINCT customer_phone)
-  WHERE premiere_livraison ∈ mois
+  WHERE premiere_livraison ∈ [from, to]
 
-cac = depense_pub_mois / nouveaux`,
+cac = depense_pub_periode / nouveaux`,
     notes: "Règle dure : CAC < AOV / 3. Au-dessus, on acquiert à perte.",
   },
 
   deliveredCustomers: {
     meaning:
-      "Clients uniques ayant reçu au moins une livraison dans le mois. Un fort % de récurrents = le produit fidélise (bon signe).",
+      "Clients uniques ayant reçu au moins une livraison sur la période sélectionnée. Un fort % de récurrents = le produit fidélise (bon signe).",
     formula: `clients_livres = COUNT(DISTINCT customer_phone)
-  sur livraisons du mois
+  sur livraisons de la periode
 
-nouveaux   = 1re livraison ever ∈ mois
+nouveaux   = 1re livraison ever ∈ [from, to]
 recurrents = clients_livres - nouveaux`,
   },
 
