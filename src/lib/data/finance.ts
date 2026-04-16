@@ -8,7 +8,7 @@ import {
   computeCac,
 } from "@/lib/finance/margins";
 import { getOverheadForPeriod, normalizePeriod } from "@/lib/data/settings";
-import { getSpendSummary } from "@/lib/data/campaigns";
+import { getSpendSummaryForRange } from "@/lib/data/campaigns";
 
 const PAGE_SIZE = 1000;
 
@@ -34,22 +34,33 @@ function ns(s: string | null | undefined): string {
   return (s ?? "").trim().toLowerCase().replace(/_/g, " ");
 }
 
-function periodBounds(period: string): { from: string; to: string; label: string } {
-  // period is "YYYY-MM-01"
+/**
+ * Export the month bounds helper so API routes and other callers can reuse it.
+ */
+export function monthBoundsIso(period: string): {
+  fromIso: string;
+  toExclusiveIso: string;
+  label: string;
+} {
   const normalized = normalizePeriod(period);
   const [y, m] = normalized.split("-").map((x) => parseInt(x, 10));
   const from = new Date(Date.UTC(y, m - 1, 1));
-  const to = new Date(Date.UTC(y, m, 1)); // first day of next month, exclusive
+  const toExclusive = new Date(Date.UTC(y, m, 1));
   const label = new Intl.DateTimeFormat("fr-FR", {
     month: "long",
     year: "numeric",
   }).format(from);
-  return { from: from.toISOString(), to: to.toISOString(), label };
+  return {
+    fromIso: from.toISOString(),
+    toExclusiveIso: toExclusive.toISOString(),
+    label,
+  };
 }
 
-export interface MonthlyPnlData {
-  period: string;
-  periodLabel: string;
+export interface FinanceRangeData {
+  fromIso: string;
+  toExclusiveIso: string;
+  label: string;
   // Counts
   totalOrders: number;
   deliveredOrders: number;
@@ -90,21 +101,26 @@ export interface MonthlyPnlData {
     spend: number;
     roas: number;
   }[];
-  // CM after ad spend (closer to CEO spec's real CM)
+  // CM after ad spend
   contributionMarginAfterAds: number;
   cmPctAfterAds: number;
-  // Overhead
-  overhead: {
-    category: string;
-    label: string;
-    amount: number;
-  }[];
+  // Diagnostics
+  configured: boolean;
+}
+
+export interface MonthlyNetProfitData {
+  period: string;
+  periodLabel: string;
+  configuredRevenue: number;
+  contributionMarginAfterAds: number;
+  cmPctAfterAds: number;
+  overhead: { category: string; label: string; amount: number }[];
   totalOverhead: number;
-  // Net profit (CM after ads - overhead)
   netProfit: number;
   npmPct: number;
-  // Diagnostics
-  configured: boolean; // any settings present?
+  deliveredOrders: number;
+  totalOrders: number;
+  hasAnyData: boolean;
 }
 
 const OVERHEAD_LABELS: Record<string, string> = {
@@ -138,17 +154,6 @@ async function fetchOrdersInRange(from: string, to: string): Promise<OrderRow[]>
   return rows;
 }
 
-/**
- * First-time delivered customers in a given period.
- * A customer (identified by customer_phone) is "new" in this period if their
- * FIRST-EVER delivered order has a converty_created_at inside [from, to).
- *
- * To compute this correctly we need to check each in-period delivered customer
- * against ALL their previous delivered orders. We do this by:
- *  1. Collecting distinct phones from delivered orders in the period
- *  2. For those phones, fetching all earlier delivered orders
- *  3. Filtering out phones that had delivered orders before `from`
- */
 async function countFirstTimeDeliveredCustomers(
   deliveredOrdersInPeriod: OrderRow[],
   from: string
@@ -161,8 +166,6 @@ async function countFirstTimeDeliveredCustomers(
   if (phones.size === 0) return 0;
 
   const supabase = createAdminClient();
-  // Fetch any delivered order BEFORE `from` from these phones.
-  // Chunk phones to keep the URL manageable.
   const CHUNK = 100;
   const phoneList = Array.from(phones);
   const priorPhones = new Set<string>();
@@ -176,14 +179,13 @@ async function countFirstTimeDeliveredCustomers(
       .eq("is_test", false)
       .in("customer_phone", chunk)
       .lt("converty_created_at", from)
-      .limit(CHUNK * 50); // enough to capture at least one prior per phone
+      .limit(CHUNK * 50);
     if (error) throw new Error(`orders (prior deliveries): ${error.message}`);
     for (const row of data ?? []) {
       if (row.customer_phone) priorPhones.add(row.customer_phone as string);
     }
   }
 
-  // Count phones whose FIRST delivered order is in this period (no prior delivery)
   let newCustomers = 0;
   for (const phone of phones) {
     if (!priorPhones.has(phone)) newCustomers += 1;
@@ -210,32 +212,33 @@ async function fetchAllOrderItems(): Promise<OrderItemRow[]> {
   return rows;
 }
 
-export const getMonthlyPnl = cache(
-  async (period: string): Promise<MonthlyPnlData> => {
+export const getFinanceRange = cache(
+  async (input: {
+    fromIso: string;
+    toExclusiveIso: string;
+    label: string;
+  }): Promise<FinanceRangeData> => {
+    const { fromIso, toExclusiveIso, label } = input;
     const supabase = createAdminClient();
-    const { from, to, label } = periodBounds(period);
 
     const [
       orders,
       productCostsResult,
       settingsResult,
-      overheadResult,
       spendSummary,
       productsResult,
     ] = await Promise.all([
-      fetchOrdersInRange(from, to),
+      fetchOrdersInRange(fromIso, toExclusiveIso),
       supabase.from("product_costs").select("product_id, unit_cogs"),
       supabase
         .from("business_settings")
         .select("cosmos_delivery_fee, cosmos_return_fee, packing_cost_per_package, converty_fee_rate")
         .limit(1)
         .maybeSingle(),
-      getOverheadForPeriod(period),
-      getSpendSummary(period),
+      getSpendSummaryForRange({ from: fromIso.slice(0, 10), to: toExclusiveIso.slice(0, 10) }),
       supabase.from("products").select("id, name"),
     ]);
 
-    // Filter business-relevant orders
     const real = orders.filter(
       (o) => !o.is_test && ns(o.status) !== "deleted"
     );
@@ -245,8 +248,6 @@ export const getMonthlyPnl = cache(
       RETURN_NUMERATOR_STATUSES.has(ns(o.status))
     );
 
-    // Fetch all order_items once, then filter to this month's orders.
-    // This avoids many sequential .in() queries that can fail under load.
     const realOrderIds = new Set(real.map((o) => o.id));
     const allOrderItems = await fetchAllOrderItems();
     const orderItems = allOrderItems.filter((item) => realOrderIds.has(item.order_id));
@@ -264,7 +265,6 @@ export const getMonthlyPnl = cache(
       convertyFeeRate: Number(settings?.converty_fee_rate ?? 0.003),
     };
 
-    // Revenue
     const grossRevenue = delivered.reduce(
       (sum, o) => sum + Number(o.total_price ?? 0),
       0
@@ -274,7 +274,6 @@ export const getMonthlyPnl = cache(
       0
     );
 
-    // Gross profit
     const deliveredOrderIds = new Set(delivered.map((o) => o.id));
     const profit = computeGrossProfit({
       deliveredOrderIds,
@@ -283,7 +282,6 @@ export const getMonthlyPnl = cache(
       productCosts,
     });
 
-    // Per-product COGS sum on delivered (for CPO)
     let deliveredCogs = 0;
     const cogsMap = new Map<string, number>();
     for (const c of productCosts) {
@@ -303,7 +301,6 @@ export const getMonthlyPnl = cache(
     ).length;
     const productsMissingCogs = deliveredProductIds.size - productsWithCogs;
 
-    // CM
     const cm = computeContributionMargin(
       {
         grossProfit: profit.grossProfit,
@@ -315,7 +312,6 @@ export const getMonthlyPnl = cache(
       profit.configuredRevenue
     );
 
-    // CPO
     const cpoResult = computeCpo({
       deliveredCount: delivered.length,
       deliveredCogs,
@@ -325,21 +321,18 @@ export const getMonthlyPnl = cache(
       convertyFees: cm.convertyFees,
     });
 
-    // Per-product delivered revenue (for ROAS)
     const revenueByProduct = new Map<string, number>();
     for (const item of orderItems) {
       if (!deliveredOrderIds.has(item.order_id)) continue;
       if (!item.product_id) continue;
       const qty = Number(item.quantity ?? 0);
       const unitPrice = Number(item.price_per_unit ?? 0);
-      const itemRevenue = qty * unitPrice;
       revenueByProduct.set(
         item.product_id,
-        (revenueByProduct.get(item.product_id) ?? 0) + itemRevenue
+        (revenueByProduct.get(item.product_id) ?? 0) + qty * unitPrice
       );
     }
 
-    // ROAS
     const roasResult = computeRoas({
       deliveredRevenueByProduct: revenueByProduct,
       spendByProduct: spendSummary.spendByProduct,
@@ -347,26 +340,23 @@ export const getMonthlyPnl = cache(
       totalSpend: spendSummary.totalSpend,
     });
 
-    // CAC
     const totalDeliveredCustomers = new Set(
       delivered
         .map((o) => (o.customer_phone ?? "").trim())
         .filter((p) => p.length > 0)
     ).size;
-    const newCustomers = await countFirstTimeDeliveredCustomers(delivered, from);
+    const newCustomers = await countFirstTimeDeliveredCustomers(delivered, fromIso);
     const cacResult = computeCac({
       totalSpend: spendSummary.totalSpend,
       newCustomerCount: newCustomers,
     });
 
-    // CM after ads (closer to CEO spec's "real" CM)
     const contributionMarginAfterAds = cm.contributionMargin - spendSummary.totalSpend;
     const cmPctAfterAds =
       profit.configuredRevenue > 0
         ? (contributionMarginAfterAds / profit.configuredRevenue) * 100
         : 0;
 
-    // Product name lookup for ROAS rows
     const productNameById = new Map<string, string>();
     for (const p of productsResult.data ?? []) {
       productNameById.set(p.id as string, p.name as string);
@@ -381,25 +371,10 @@ export const getMonthlyPnl = cache(
       }))
       .sort((a, b) => b.spend - a.spend);
 
-    // Overhead: keep only categories with > 0
-    const overheadEntries = overheadResult.entries
-      .filter((e) => e.amount > 0)
-      .map((e) => ({
-        category: e.category,
-        label: OVERHEAD_LABELS[e.category] ?? e.category,
-        amount: e.amount,
-      }));
-
-    // Net profit now subtracts ad spend AND overhead
-    const netProfit = contributionMarginAfterAds - overheadResult.total;
-    const npmPct =
-      profit.configuredRevenue > 0
-        ? (netProfit / profit.configuredRevenue) * 100
-        : 0;
-
     return {
-      period: normalizePeriod(period),
-      periodLabel: label,
+      fromIso,
+      toExclusiveIso,
+      label,
       totalOrders: real.length,
       deliveredOrders: delivered.length,
       returnedOrders: returnedForCm.length,
@@ -429,11 +404,46 @@ export const getMonthlyPnl = cache(
       roasPerProduct,
       contributionMarginAfterAds,
       cmPctAfterAds,
+      configured: !!settings,
+    };
+  }
+);
+
+export const getMonthlyNetProfit = cache(
+  async (period: string): Promise<MonthlyNetProfitData> => {
+    const { fromIso, toExclusiveIso, label } = monthBoundsIso(period);
+    const [range, overhead] = await Promise.all([
+      getFinanceRange({ fromIso, toExclusiveIso, label }),
+      getOverheadForPeriod(period),
+    ]);
+
+    const overheadEntries = overhead.entries
+      .filter((e) => e.amount > 0)
+      .map((e) => ({
+        category: e.category,
+        label: OVERHEAD_LABELS[e.category] ?? e.category,
+        amount: e.amount,
+      }));
+
+    const netProfit = range.contributionMarginAfterAds - overhead.total;
+    const npmPct =
+      range.configuredRevenue > 0
+        ? (netProfit / range.configuredRevenue) * 100
+        : 0;
+
+    return {
+      period: normalizePeriod(period),
+      periodLabel: label,
+      configuredRevenue: range.configuredRevenue,
+      contributionMarginAfterAds: range.contributionMarginAfterAds,
+      cmPctAfterAds: range.cmPctAfterAds,
       overhead: overheadEntries,
-      totalOverhead: overheadResult.total,
+      totalOverhead: overhead.total,
       netProfit,
       npmPct,
-      configured: !!settings,
+      deliveredOrders: range.deliveredOrders,
+      totalOrders: range.totalOrders,
+      hasAnyData: range.totalOrders > 0,
     };
   }
 );

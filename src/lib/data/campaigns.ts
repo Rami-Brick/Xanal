@@ -196,6 +196,38 @@ export interface SpendSummary {
   spendNoProduct: number; // campaigns not mapped to any product
 }
 
+function summarizeSpendRows(
+  campaigns: { id: string; product_id: string | null }[],
+  spendRows: { campaign_id: string; amount: number }[]
+): SpendSummary {
+  const spendByCampaign = new Map<string, number>();
+  for (const row of spendRows) {
+    spendByCampaign.set(
+      row.campaign_id,
+      (spendByCampaign.get(row.campaign_id) ?? 0) + Number(row.amount ?? 0)
+    );
+  }
+
+  const spendByProduct = new Map<string, number>();
+  let totalSpend = 0;
+  let spendNoProduct = 0;
+
+  for (const c of campaigns) {
+    const campaignSpend = spendByCampaign.get(c.id) ?? 0;
+    totalSpend += campaignSpend;
+    if (c.product_id) {
+      spendByProduct.set(
+        c.product_id,
+        (spendByProduct.get(c.product_id) ?? 0) + campaignSpend
+      );
+    } else {
+      spendNoProduct += campaignSpend;
+    }
+  }
+
+  return { totalSpend, spendByProduct, spendNoProduct };
+}
+
 export async function getSpendSummary(period: string): Promise<SpendSummary> {
   const rows = await getSpendForPeriod(period);
   const spendByProduct = new Map<string, number>();
@@ -215,4 +247,40 @@ export async function getSpendSummary(period: string): Promise<SpendSummary> {
   }
 
   return { totalSpend, spendByProduct, spendNoProduct };
+}
+
+/**
+ * Sum spend for an arbitrary date range (from inclusive, to exclusive).
+ * Both `from` and `to` are "YYYY-MM-DD" strings.
+ */
+export async function getSpendSummaryForRange(input: {
+  from: string;
+  to: string;
+}): Promise<SpendSummary> {
+  const supabase = createAdminClient();
+
+  const [campaignsResult, spendResult] = await Promise.all([
+    supabase
+      .from("campaigns")
+      .select("id, product_id"),
+    supabase
+      .from("campaign_spend")
+      .select("campaign_id, amount")
+      .gte("spend_date", input.from)
+      .lt("spend_date", input.to),
+  ]);
+
+  if (campaignsResult.error) throw new Error(`campaigns: ${campaignsResult.error.message}`);
+  if (spendResult.error) throw new Error(`campaign_spend: ${spendResult.error.message}`);
+
+  return summarizeSpendRows(
+    (campaignsResult.data ?? []).map((c) => ({
+      id: c.id as string,
+      product_id: c.product_id as string | null,
+    })),
+    (spendResult.data ?? []).map((r) => ({
+      campaign_id: r.campaign_id as string,
+      amount: Number(r.amount ?? 0),
+    }))
+  );
 }
