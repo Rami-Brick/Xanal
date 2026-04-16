@@ -325,16 +325,16 @@ export default async function PerformancePage() {
             {(
               [
                 {
-                  label: "Livraison Cosmos",
+                  label: "Livraison transporteur",
                   tooltipKey: "costCosmos",
                   value: d.margins.costBreakdown.deliveryFees,
-                  detail: `${fmt(d.kpis.deliveredOrders)} × ${fmtCurrency(d.margins.fees.cosmosDeliveryFee)}`,
+                  detail: `${fmt(d.kpis.deliveredOrders)} × ${fmtCurrency(d.margins.fees.carrierDeliveryFee)}`,
                 },
                 {
                   label: "Retours (livraison + frais retour)",
                   tooltipKey: "costReturns",
                   value: d.margins.costBreakdown.returnBurden,
-                  detail: `${fmt(rv.returnNumerator)} × ${fmtCurrency(d.margins.fees.cosmosDeliveryFee + d.margins.fees.cosmosReturnFee)}`,
+                  detail: `${fmt(rv.returnNumerator)} × ${fmtCurrency(d.margins.fees.carrierDeliveryFee + d.margins.fees.carrierReturnFee)}`,
                 },
                 {
                   label: "Emballage",

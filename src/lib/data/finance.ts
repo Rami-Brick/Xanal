@@ -259,8 +259,8 @@ export const getFinanceRange = cache(
 
     const settings = settingsResult.data;
     const fees = {
-      cosmosDeliveryFee: Number(settings?.cosmos_delivery_fee ?? 0),
-      cosmosReturnFee: Number(settings?.cosmos_return_fee ?? 0),
+      carrierDeliveryFee: Number(settings?.cosmos_delivery_fee ?? 0),
+      carrierReturnFee: Number(settings?.cosmos_return_fee ?? 0),
       packingCostPerPackage: Number(settings?.packing_cost_per_package ?? 0),
       convertyFeeRate: Number(settings?.converty_fee_rate ?? 0.003),
     };

@@ -111,7 +111,7 @@ export async function deleteSettlement(id: string): Promise<void> {
  *            - SUM(delivery_fee + return_fee) for returned orders in range
  *
  * We use `converty_updated_at` as the event date (when the order reached its
- * current terminal state, closest to when Cosmos closed the book on it).
+ * current terminal state, closest to when the carrier closed the book on it).
  */
 export async function computeExpectedForRange(
   periodFrom: string,

@@ -67,7 +67,7 @@ export default async function FinancePage() {
         <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 16 }}>
           <p style={{ ...eyebrow, marginBottom: 0 }}>Tresorerie</p>
           <span style={{ fontSize: 11, color: "rgba(255,255,255,0.22)" }}>
-            Position globale Cosmos
+            Position globale transporteur
           </span>
         </div>
         <CashPositionCards data={cashPosition} />

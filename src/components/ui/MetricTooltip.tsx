@@ -94,11 +94,12 @@ export function MetricTooltip({ meaning, formula, notes, variant = "dark" }: Pro
       </button>
 
       {open && (
-        <div
+        <span
           id={id}
           role="tooltip"
           onClick={(e) => e.stopPropagation()}
           style={{
+            display: "block",
             position: "absolute",
             top: "calc(100% + 8px)",
             left: 0,
@@ -117,8 +118,9 @@ export function MetricTooltip({ meaning, formula, notes, variant = "dark" }: Pro
             fontWeight: 400,
           }}
         >
-          <p
+          <span
             style={{
+              display: "block",
               fontSize: 12,
               lineHeight: 1.45,
               color: panelText,
@@ -126,7 +128,7 @@ export function MetricTooltip({ meaning, formula, notes, variant = "dark" }: Pro
             }}
           >
             {meaning}
-          </p>
+          </span>
           {formula && (
             <pre
               style={{
@@ -150,8 +152,9 @@ export function MetricTooltip({ meaning, formula, notes, variant = "dark" }: Pro
             </pre>
           )}
           {notes && (
-            <p
+            <span
               style={{
+                display: "block",
                 fontSize: 11,
                 lineHeight: 1.45,
                 color: panelMuted,
@@ -160,9 +163,9 @@ export function MetricTooltip({ meaning, formula, notes, variant = "dark" }: Pro
               }}
             >
               {notes}
-            </p>
+            </span>
           )}
-        </div>
+        </span>
       )}
     </span>
   );

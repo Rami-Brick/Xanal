@@ -245,7 +245,7 @@ export function SettlementsSection() {
   return (
     <section>
       <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 20 }}>
-        <p style={{ ...eyebrow, marginBottom: 0 }}>Reglements Cosmos</p>
+        <p style={{ ...eyebrow, marginBottom: 0 }}>Reglements transporteur</p>
         <span style={{ fontSize: 11, color: "rgba(255,255,255,0.22)" }}>
           Reconciliation attendu vs recu par versement
         </span>
@@ -350,7 +350,7 @@ export function SettlementsSection() {
                 </p>
               </div>
               <div>
-                <p style={{ color: "rgba(255,255,255,0.3)" }}>Frais Cosmos</p>
+                <p style={{ color: "rgba(255,255,255,0.3)" }}>Frais transporteur</p>
                 <p style={{ fontFamily: "var(--font-geist-mono), monospace", fontSize: 14, color: RED, marginTop: 2, opacity: 0.8 }}>
                   {fmtCurrency(-(preview.deliveryFees + preview.returnBurden))}
                 </p>

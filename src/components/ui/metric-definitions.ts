@@ -17,7 +17,7 @@ export const METRICS: Record<string, MetricDef> = {
 
   pipelineToday: {
     meaning:
-      "Répartition des commandes créées aujourd'hui par statut. Le statut « Déposées » marque le début des frais Cosmos.",
+      "Répartition des commandes créées aujourd'hui par statut. Le statut « Déposées » marque le début des frais transporteur.",
     formula: `Pour chaque statut:
   count = COUNT(orders
     WHERE created_today
@@ -166,7 +166,7 @@ marge_brute = profit_brut
   cpo: {
     meaning:
       "Coût par commande livrée (CPO) : coût variable tout compris divisé par les livraisons réussies. Les retours gonflent volontairement ce chiffre — c'est la vérité du coût all-in.",
-    formula: `couts_var = COGS + livraison_cosmos
+    formula: `couts_var = COGS + livraison_carrier
           + retours + emballage
           + commission_converty
 
@@ -186,7 +186,7 @@ cpo = couts_var / COUNT(delivered)`,
   contributionMargin: {
     meaning:
       "Marge de contribution (CM) : profit brut moins tous les coûts variables directs (livraison, retours, emballage, commission). C'est la viabilité structurelle avant pub et frais fixes.",
-    formula: `couts_variables = livraison_cosmos
+    formula: `couts_variables = livraison_carrier
                 + retours
                 + emballage
                 + commission_converty
@@ -204,10 +204,10 @@ cm = profit_brut - couts_variables`,
 
   costCosmos: {
     meaning:
-      "Coût total des livraisons Cosmos réussies. Le frais de livraison (7 TND par défaut) ne s'applique qu'aux livraisons livrées — pas aux déposées non livrées.",
-    formula: `livraison_cosmos =
-  COUNT(delivered) × cosmos_delivery_fee`,
-    notes: "Taux configurable dans /settings > Paramètres opérationnels.",
+      "Coût total des livraisons transporteur réussies. Le frais de livraison (7 TND par défaut) ne s'applique qu'aux livraisons livrées — pas aux déposées non livrées.",
+    formula: `livraison_carrier =
+  COUNT(delivered) × carrier_delivery_fee`,
+    notes: "Taux configurable dans /settings > Transporteur.",
   },
 
   costReturns: {
@@ -215,7 +215,7 @@ cm = profit_brut - couts_variables`,
       "Coût des retours : sur chaque retour, on paye deux fois — le frais de livraison aller (perdu) + le frais de retour. C'est le coût caché qui tue les marges.",
     formula: `retours =
   COUNT(returned + to_be_returned)
-  × (cosmos_delivery_fee + cosmos_return_fee)`,
+  × (carrier_delivery_fee + carrier_return_fee)`,
     notes: "Le COGS du produit retourné n'est PAS compté en perte — il retourne en stock.",
   },
 
@@ -258,7 +258,7 @@ rate par défaut = 0.003 (0,3 %)`,
       "Profit net du mois (NPM) : ce qui reste après TOUS les coûts — variables + pub + frais fixes. Le chiffre CEO. Si on ne regarde qu'un nombre par mois, c'est celui-ci.",
     formula: `profit_net = revenu_livre
            - cogs
-           - livraison_cosmos - retours
+           - livraison_carrier - retours
            - emballage - commission_converty
            - depenses_publicitaires
            - charges_fixes_mensuelles
@@ -307,17 +307,17 @@ recurrents = clients_livres - nouveaux`,
 
   cashCollected: {
     meaning:
-      "Cash réellement reçu de Cosmos via virements bancaires depuis le début. Somme des règlements enregistrés dans /settings > Cosmos.",
+      "Cash réellement reçu du transporteur via virements bancaires depuis le début. Somme des règlements enregistrés dans /settings > Transporteur.",
     formula: `cash_encaisse = SUM(actual_amount)
   FROM cosmos_settlements`,
   },
 
   cashInTransit: {
     meaning:
-      "Cash que Cosmos te doit : montant net attendu sur les commandes terminées après la date de fin du dernier règlement.",
+      "Cash que le transporteur te doit : montant net attendu sur les commandes terminées après la date de fin du dernier règlement.",
     formula: `Par commande terminale après dernier règlement:
   Si delivered:
-    attendu = total_price - cosmos_delivery_fee
+    attendu = total_price - carrier_delivery_fee
   Si returned:
     attendu = -(delivery_fee + return_fee)
 
@@ -326,7 +326,7 @@ cash_en_transit = SUM(attendu)`,
 
   settlementGap: {
     meaning:
-      "Écart entre le montant attendu et le montant reçu pour le dernier règlement Cosmos. Un écart significatif signale soit un statut commande non à jour, soit une erreur Cosmos à réconcilier.",
+      "Écart entre le montant attendu et le montant reçu pour le dernier règlement transporteur. Un écart significatif signale soit un statut commande non à jour, soit une erreur transporteur à réconcilier.",
     formula: `attendu = SUM(attendu sur la période)
 ecart   = attendu - actual_amount
 gap_pct = |ecart| / attendu × 100`,

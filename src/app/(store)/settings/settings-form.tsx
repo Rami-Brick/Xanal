@@ -15,7 +15,7 @@ const OVERHEAD_LABELS: Record<OverheadCategory, string> = {
   phone_internet: "Telephone / Internet",
   subscriptions: "Abonnements et logiciels",
   tax: "Declaration fiscale",
-  daily_pickup: "Frais journaliers Cosmos",
+  daily_pickup: "Frais journaliers transporteur",
   other: "Autres",
 };
 
@@ -251,7 +251,7 @@ export function SettingsForm({
             }}
           >
             <div>
-              <label style={labelStyle}>Frais de livraison Cosmos (TND)</label>
+              <label style={labelStyle}>Frais de livraison transporteur (TND)</label>
               <input
                 type="number"
                 step="0.1"
@@ -267,7 +267,7 @@ export function SettingsForm({
               </p>
             </div>
             <div>
-              <label style={labelStyle}>Frais de retour Cosmos (TND)</label>
+              <label style={labelStyle}>Frais de retour transporteur (TND)</label>
               <input
                 type="number"
                 step="0.1"

@@ -93,8 +93,8 @@ export function computeGrossProfit(input: GrossProfitInput): GrossProfitResult {
 }
 
 export interface FeeConfig {
-  cosmosDeliveryFee: number;
-  cosmosReturnFee: number;
+  carrierDeliveryFee: number;
+  carrierReturnFee: number;
   packingCostPerPackage: number;
   convertyFeeRate: number;
 }
@@ -125,7 +125,7 @@ export interface ContributionMarginResult extends CostBreakdown {
  * Compute contribution margin from gross profit and operational costs.
  *
  * Rules per CEO spec:
- * - Delivery fees accrue on delivered orders (cosmos pickup triggers at deposit,
+ * - Delivery fees accrue on delivered orders (carrier pickup triggers at deposit,
  *   but we charge against delivered since returns have their own line)
  * - Return burden = wasted delivery fee + return fee on returned orders
  * - Packing cost applies to delivered + returned (both left the warehouse)
@@ -140,9 +140,9 @@ export function computeContributionMargin(
 ): ContributionMarginResult {
   const { fees } = input;
 
-  const deliveryFees = input.deliveredCount * fees.cosmosDeliveryFee;
+  const deliveryFees = input.deliveredCount * fees.carrierDeliveryFee;
   const returnBurden =
-    input.returnedCount * (fees.cosmosDeliveryFee + fees.cosmosReturnFee);
+    input.returnedCount * (fees.carrierDeliveryFee + fees.carrierReturnFee);
   const packingCosts =
     (input.deliveredCount + input.returnedCount) * fees.packingCostPerPackage;
   const convertyFees = input.nonTestOrdersTotalPrice * fees.convertyFeeRate;
@@ -325,7 +325,7 @@ export function computeProductPnl(input: {
   productMeta: Map<string, { name: string; imageUrl: string | null }>;
   totalDeliveredRevenue: number;
   totalDeliveredUnits: number;
-  totalOpsCost: number; // sum of cosmos delivery + return burden + packing + converty fees
+  totalOpsCost: number; // sum of carrier delivery + return burden + packing + converty fees
 }): ProductPnlRow[] {
   const margins = computeProductMargins(input);
   const rows: ProductPnlRow[] = [];

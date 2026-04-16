@@ -189,8 +189,8 @@ export interface StorePageData {
       totalVariableCosts: number;
     };
     fees: {
-      cosmosDeliveryFee: number;
-      cosmosReturnFee: number;
+      carrierDeliveryFee: number;
+      carrierReturnFee: number;
       packingCostPerPackage: number;
       convertyFeeRate: number;
     };
@@ -254,8 +254,8 @@ export const getStorePageData = cache(async (): Promise<StorePageData> => {
 
   const settings = businessSettingsResult.data;
   const fees = {
-    cosmosDeliveryFee: Number(settings?.cosmos_delivery_fee ?? 0),
-    cosmosReturnFee: Number(settings?.cosmos_return_fee ?? 0),
+    carrierDeliveryFee: Number(settings?.cosmos_delivery_fee ?? 0),
+    carrierReturnFee: Number(settings?.cosmos_return_fee ?? 0),
     packingCostPerPackage: Number(settings?.packing_cost_per_package ?? 0),
     convertyFeeRate: Number(settings?.converty_fee_rate ?? 0.003),
   };
@@ -540,8 +540,8 @@ export const getStorePageData = cache(async (): Promise<StorePageData> => {
       returnedCount: returnedForCm,
       nonTestOrdersTotalPrice,
       fees: {
-        cosmosDeliveryFee: fees.cosmosDeliveryFee,
-        cosmosReturnFee: fees.cosmosReturnFee,
+        carrierDeliveryFee: fees.carrierDeliveryFee,
+        carrierReturnFee: fees.carrierReturnFee,
         packingCostPerPackage: fees.packingCostPerPackage,
         convertyFeeRate: fees.convertyFeeRate,
       },

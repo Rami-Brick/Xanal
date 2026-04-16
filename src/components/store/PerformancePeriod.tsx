@@ -95,7 +95,7 @@ function buildWaterfall(d: FinanceRangeData): WaterfallLine[] {
       emphasize: "subtotal",
     },
     {
-      label: "− Livraison Cosmos",
+      label: "− Livraison transporteur",
       amount: -d.deliveryFees,
       detail: `${d.deliveredOrders} livraisons`,
     },
